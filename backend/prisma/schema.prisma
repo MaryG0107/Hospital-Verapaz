@@ -1,0 +1,264 @@
+// Esquema de base de datos - PostgreSQL
+// Cubre las entidades principales derivadas de los RF documentados
+// en docs/Req_y_Estructura.docx
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modulo 8: Seguridad y Roles
+model Usuario {
+  id                    Int      @id @default(autoincrement())
+  nombre                String
+  correo                String   @unique
+  passwordHash          String
+  rol                   String   // Administrador, Recepcion, Consulta, Enfermeria, Facturacion, Farmacia
+  puedeAutogenerarToken Boolean  @default(false) // RF-34
+  creadoEn              DateTime @default(now())
+
+  tokensRecibidos  TokenTemporal[] @relation("TokenUsuario")
+  tokensEmitidos   TokenTemporal[] @relation("TokenEmisor")
+  diagnosticos     Diagnostico[]   @relation("DiagnosticoRegistradoPor")
+  recetas          Receta[]        @relation("RecetaMedico")
+  visitasRegistradas BitacoraVisita[] @relation("BitacoraAutor")
+  ventasFarmacia   VentaFarmacia[] @relation("VentaRegistradoPor")
+
+  @@index([rol])
+}
+
+model TokenTemporal {
+  id          Int      @id @default(autoincrement())
+  token       String   @unique // valor aleatorio enviado en el header x-temp-token
+  usuarioId   Int
+  pacienteId  Int?
+  emitidoPor  Int      // id del Administrador que lo genero (o el mismo usuario si autogenerado)
+  expiraEn    DateTime
+  usado       Boolean  @default(false) // RNF-12: un solo uso
+  creadoEn    DateTime @default(now())
+
+  usuario  Usuario   @relation("TokenUsuario", fields: [usuarioId], references: [id])
+  emisor   Usuario   @relation("TokenEmisor", fields: [emitidoPor], references: [id])
+  paciente Paciente? @relation(fields: [pacienteId], references: [id])
+
+  @@index([usuarioId])
+  @@index([expiraEn])
+}
+
+// Modulo 1: Registro y Admision
+model Paciente {
+  id                 Int       @id @default(autoincrement())
+  historiaClinica    String    @unique // RF-03, generado automaticamente
+  nombreCompleto     String
+  dpi                String    @unique // RF-04, evita duplicados
+  direccion          String?
+  lugarNacimiento    String?
+  fechaNacimiento    DateTime?
+  telefono           String?
+  edad               Int?
+  sexo               String?
+  estadoCivil        String?
+  ocupacion          String?
+  religion           String?
+  nacionalidad       String?
+  nombreConyuge      String?
+  nombrePadre        String?
+  nombreMadre        String?
+  contactoEmergencia String?
+  parentesco         String?
+
+  // RF-05: ingreso
+  referidoDe         String? // institucion o medico, texto libre
+  medicoReferenteId  Int?    // si el referente es un medico registrado (Modulo 4)
+  serviciosSolicitados String?
+  impresionClinicaIngreso String?
+  fechaIngreso       DateTime?
+
+  // RF-06/RF-08: egreso
+  fechaEgreso        DateTime?
+  diagnosticoEgresoCodigo String?
+  complicacionesCodigo    String?
+  operacionesCodigo       String?
+  condicionEgreso    String? // curado, contraindicado, referido, mejorado, fallecido_antes_48, fallecido_despues_48
+  autopsia           Boolean?
+  causaMuerte        String?
+
+  creadoEn DateTime @default(now())
+
+  medicoReferente    MedicoReferente?     @relation(fields: [medicoReferenteId], references: [id])
+  maternidad         RegistroMaternidad?
+  diagnosticos       Diagnostico[]
+  tratamientos       TratamientoItem[]
+  recetas            Receta[]
+  facturasHospital   FacturaHospital[]
+  visitas            BitacoraVisita[]
+  tokensTemporales   TokenTemporal[]
+
+  @@index([nombreCompleto])
+}
+
+// RF-07: seccion de maternidad (cuando aplica)
+model RegistroMaternidad {
+  id                Int      @id @default(autoincrement())
+  pacienteId        Int      @unique
+  numeroHijo        Int?
+  fecha             DateTime?
+  hora              String?
+  sexo              String?
+  condicionEgresoBebe String?
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id])
+}
+
+// Modulo 2: Expediente Clinico
+model Diagnostico {
+  id             Int      @id @default(autoincrement())
+  pacienteId     Int
+  textoCifrado   String   // RF-10: contenido cifrado (AES-256-GCM)
+  iv             String
+  authTag        String
+  codigoCie      String?
+  registradoPor  Int
+  creadoEn       DateTime @default(now())
+
+  paciente  Paciente @relation(fields: [pacienteId], references: [id])
+  registrador Usuario @relation("DiagnosticoRegistradoPor", fields: [registradoPor], references: [id])
+
+  @@index([pacienteId])
+}
+
+// Modulo 3: Tratamiento y Medicamentos Intrahospitalarios
+model TratamientoItem {
+  id           Int      @id @default(autoincrement())
+  pacienteId   Int
+  descripcion  String
+  dosis        String?
+  costo        Decimal  @db.Decimal(10, 2)
+  origen       String   // "intrahospitalario" | "farmacia"
+  facturado    Boolean  @default(false) // evita doble cobro al facturar (RNF-13)
+  fecha        DateTime @default(now())
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id])
+
+  @@index([pacienteId])
+}
+
+model Receta {
+  id             Int      @id @default(autoincrement())
+  pacienteId     Int
+  medicoId       Int
+  medicamento    String
+  dosis          String
+  indicaciones   String
+  duracion       String
+  creadoEn       DateTime @default(now())
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id])
+  medico   Usuario  @relation("RecetaMedico", fields: [medicoId], references: [id])
+
+  @@index([pacienteId])
+}
+
+// Modulo 4: Clientes Referidos
+model MedicoReferente {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  especialidad  String?
+  comisionQ     Decimal  @db.Decimal(10, 2)
+  creadoEn      DateTime @default(now())
+
+  pacientesReferidos Paciente[]
+}
+
+// Modulo 5: Area Financiera
+model FacturaHospital {
+  id               Int      @id @default(autoincrement())
+  pacienteId       Int
+  costoHospital    Decimal  @db.Decimal(10, 2)
+  costoTratamiento Decimal  @db.Decimal(10, 2)
+  total            Decimal  @db.Decimal(10, 2)
+  formaPago        String   // "transferencia" | "efectivo"
+  creadoEn         DateTime @default(now())
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id])
+
+  @@index([pacienteId])
+  @@index([creadoEn])
+}
+
+model FacturaFarmacia {
+  id           Int      @id @default(autoincrement())
+  ventaId      Int      @unique
+  montoTotal   Decimal  @db.Decimal(10, 2)
+  creadoEn     DateTime @default(now())
+
+  venta VentaFarmacia @relation(fields: [ventaId], references: [id])
+
+  @@index([creadoEn])
+}
+
+// Modulo 6: Farmacia (independiente, vision a futuro)
+model MedicamentoInventario {
+  id               Int      @id @default(autoincrement())
+  nombre           String
+  tipo             String?
+  presentacion     String?
+  stock            Int      @default(0)
+  stockMinimo      Int      @default(10) // RF-25
+  precioVenta      Decimal  @db.Decimal(10, 2) @default(0)
+  fechaVencimiento DateTime? // RF-26
+  proveedor        String?
+
+  movimientos MovimientoInventario[]
+  ventas      VentaFarmacia[]
+
+  @@index([nombre])
+}
+
+model MovimientoInventario {
+  id             Int      @id @default(autoincrement())
+  medicamentoId  Int
+  tipo           String   // "entrada" | "salida"
+  cantidad       Int
+  motivo         String?  // "venta directa" | "uso intrahospitalario" | "compra"
+  fecha          DateTime @default(now())
+
+  medicamento MedicamentoInventario @relation(fields: [medicamentoId], references: [id])
+
+  @@index([medicamentoId])
+}
+
+// RF-20/RF-24/RF-27: venta directa de farmacia, origina factura y movimiento de inventario
+model VentaFarmacia {
+  id             Int      @id @default(autoincrement())
+  medicamentoId  Int
+  cantidad       Int
+  precioUnitario Decimal  @db.Decimal(10, 2)
+  total          Decimal  @db.Decimal(10, 2)
+  registradoPor  Int
+  creadoEn       DateTime @default(now())
+
+  medicamento MedicamentoInventario @relation(fields: [medicamentoId], references: [id])
+  registrador Usuario @relation("VentaRegistradoPor", fields: [registradoPor], references: [id])
+  factura     FacturaFarmacia?
+
+  @@index([medicamentoId])
+}
+
+// Modulo 7: Bitacora de Visitas
+model BitacoraVisita {
+  id           Int      @id @default(autoincrement())
+  pacienteId   Int
+  autorId      Int
+  descripcion  String
+  fecha        DateTime @default(now())
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id])
+  autor    Usuario  @relation("BitacoraAutor", fields: [autorId], references: [id])
+
+  @@index([pacienteId])
+}

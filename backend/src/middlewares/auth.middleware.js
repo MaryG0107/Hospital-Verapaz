@@ -1,0 +1,57 @@
+import jwt from "jsonwebtoken";
+import { prisma } from "../config/prisma.js";
+import { ROLES } from "../utils/roles.util.js";
+
+// Verifica que la peticion traiga un JWT valido (sesion iniciada) - RF-29
+export function requireAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: "No autenticado" });
+
+  try {
+    const token = header.replace("Bearer ", "");
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Token invalido o expirado" });
+  }
+}
+
+// Restringe el acceso a ciertos roles (ej. solo Administrador) - RF-30/RF-32
+export function requireRole(...rolesPermitidos) {
+  return (req, res, next) => {
+    if (!rolesPermitidos.includes(req.user?.rol)) {
+      return res.status(403).json({ error: "No tiene permiso para esta accion" });
+    }
+    next();
+  };
+}
+
+// RF-11/RF-33/RF-34: exige un token de acceso temporal activo para ver o
+// modificar el diagnostico confidencial. El Administrador tiene acceso
+// permanente y no necesita token (RF-11). El token es de un solo uso y
+// se marca como consumido al validarse (RNF-12).
+export async function requireTempToken(req, res, next) {
+  if (req.user?.rol === ROLES.ADMIN) return next();
+
+  const tokenValue = req.headers["x-temp-token"];
+  if (!tokenValue) {
+    return res.status(403).json({ error: "Requiere token de acceso temporal" });
+  }
+
+  const registro = await prisma.tokenTemporal.findUnique({ where: { token: tokenValue } });
+  if (!registro) return res.status(403).json({ error: "Token invalido" });
+  if (registro.usado) return res.status(403).json({ error: "El token ya fue utilizado" });
+  if (registro.expiraEn < new Date()) return res.status(403).json({ error: "El token ha expirado" });
+  if (registro.usuarioId !== req.user.id) {
+    return res.status(403).json({ error: "El token no pertenece a este usuario" });
+  }
+
+  const pacienteId = req.params.id ? Number(req.params.id) : undefined;
+  if (registro.pacienteId && pacienteId && registro.pacienteId !== pacienteId) {
+    return res.status(403).json({ error: "El token no autoriza a este paciente" });
+  }
+
+  await prisma.tokenTemporal.update({ where: { id: registro.id }, data: { usado: true } });
+  req.tempToken = registro;
+  next();
+}

@@ -1,0 +1,120 @@
+// Controlador: Registro y Admision (Modulo 1)
+import { prisma } from "../config/prisma.js";
+
+const CAMPOS_PACIENTE = [
+  "nombreCompleto", "dpi", "direccion", "lugarNacimiento", "fechaNacimiento",
+  "telefono", "edad", "sexo", "estadoCivil", "ocupacion", "religion", "nacionalidad",
+  "nombreConyuge", "nombrePadre", "nombreMadre", "contactoEmergencia", "parentesco",
+  "referidoDe", "medicoReferenteId", "serviciosSolicitados", "impresionClinicaIngreso",
+  "fechaIngreso", "fechaEgreso", "diagnosticoEgresoCodigo", "complicacionesCodigo",
+  "operacionesCodigo", "condicionEgreso", "autopsia", "causaMuerte",
+];
+
+function tomarCampos(body) {
+  const data = {};
+  for (const campo of CAMPOS_PACIENTE) {
+    if (body[campo] === undefined) continue;
+    if (["fechaNacimiento", "fechaIngreso", "fechaEgreso"].includes(campo) && body[campo]) {
+      data[campo] = new Date(body[campo]);
+    } else {
+      data[campo] = body[campo];
+    }
+  }
+  return data;
+}
+
+function generarHistoriaClinica(id) {
+  const anio = new Date().getFullYear();
+  return `HC-${anio}-${String(id).padStart(6, "0")}`;
+}
+
+// RF-02: buscar paciente existente por nombre, DPI o historia clinica
+export async function listar(req, res) {
+  const { buscar } = req.query;
+  const where = buscar
+    ? {
+        OR: [
+          { nombreCompleto: { contains: buscar, mode: "insensitive" } },
+          { dpi: { contains: buscar } },
+          { historiaClinica: { contains: buscar, mode: "insensitive" } },
+        ],
+      }
+    : undefined;
+
+  const pacientes = await prisma.paciente.findMany({
+    where,
+    orderBy: { creadoEn: "desc" },
+    take: 50,
+  });
+  res.json(pacientes);
+}
+
+export async function obtenerUno(req, res) {
+  const paciente = await prisma.paciente.findUnique({
+    where: { id: Number(req.params.id) },
+    include: { maternidad: true, medicoReferente: true },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente no encontrado" });
+  res.json(paciente);
+}
+
+// RF-01/RF-03/RF-04: registrar paciente nuevo, generar historia clinica
+// y evitar duplicados por DPI
+export async function crear(req, res) {
+  const { dpi, nombreCompleto } = req.body;
+  if (!dpi || !nombreCompleto) {
+    return res.status(400).json({ error: "nombreCompleto y dpi son requeridos" });
+  }
+
+  const existente = await prisma.paciente.findUnique({ where: { dpi } });
+  if (existente) {
+    return res.status(409).json({ error: "Ya existe un paciente con este DPI", paciente: existente });
+  }
+
+  const paciente = await prisma.$transaction(async (tx) => {
+    const creado = await tx.paciente.create({
+      data: { ...tomarCampos(req.body), historiaClinica: `PENDIENTE-${Date.now()}` },
+    });
+    return tx.paciente.update({
+      where: { id: creado.id },
+      data: { historiaClinica: generarHistoriaClinica(creado.id) },
+    });
+  });
+
+  res.status(201).json(paciente);
+}
+
+// RF-05 a RF-09: actualizar datos de ingreso, egreso y maternidad
+export async function actualizar(req, res) {
+  const id = Number(req.params.id);
+  try {
+    const paciente = await prisma.paciente.update({ where: { id }, data: tomarCampos(req.body) });
+
+    if (req.body.maternidad) {
+      const m = req.body.maternidad;
+      await prisma.registroMaternidad.upsert({
+        where: { pacienteId: id },
+        create: {
+          pacienteId: id,
+          numeroHijo: m.numeroHijo,
+          fecha: m.fecha ? new Date(m.fecha) : undefined,
+          hora: m.hora,
+          sexo: m.sexo,
+          condicionEgresoBebe: m.condicionEgresoBebe,
+        },
+        update: {
+          numeroHijo: m.numeroHijo,
+          fecha: m.fecha ? new Date(m.fecha) : undefined,
+          hora: m.hora,
+          sexo: m.sexo,
+          condicionEgresoBebe: m.condicionEgresoBebe,
+        },
+      });
+    }
+
+    res.json(paciente);
+  } catch (err) {
+    if (err.code === "P2025") return res.status(404).json({ error: "Paciente no encontrado" });
+    throw err;
+  }
+}

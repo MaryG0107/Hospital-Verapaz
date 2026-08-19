@@ -1,0 +1,49 @@
+// Controlador: Tratamiento y Medicamentos Intrahospitalarios (Modulo 3)
+import { prisma } from "../config/prisma.js";
+
+// RF-13: listar los medicamentos/procedimientos de un paciente
+export async function listar(req, res) {
+  const { pacienteId } = req.query;
+  const items = await prisma.tratamientoItem.findMany({
+    where: pacienteId ? { pacienteId: Number(pacienteId) } : undefined,
+    orderBy: { fecha: "desc" },
+    take: 100,
+  });
+  res.json(items);
+}
+
+export async function obtenerUno(req, res) {
+  const item = await prisma.tratamientoItem.findUnique({ where: { id: Number(req.params.id) } });
+  if (!item) return res.status(404).json({ error: "Registro no encontrado" });
+  res.json(item);
+}
+
+// RF-13/RF-14/RF-15: registrar medicamento o procedimiento con costo y origen
+export async function crear(req, res) {
+  const { pacienteId, descripcion, dosis, costo, origen } = req.body;
+  if (!pacienteId || !descripcion || costo === undefined || !origen) {
+    return res.status(400).json({ error: "pacienteId, descripcion, costo y origen son requeridos" });
+  }
+  if (!["intrahospitalario", "farmacia"].includes(origen)) {
+    return res.status(400).json({ error: 'origen debe ser "intrahospitalario" o "farmacia"' });
+  }
+
+  const item = await prisma.tratamientoItem.create({
+    data: { pacienteId: Number(pacienteId), descripcion, dosis, costo, origen },
+  });
+  res.status(201).json(item);
+}
+
+export async function actualizar(req, res) {
+  const { descripcion, dosis, costo } = req.body;
+  try {
+    const item = await prisma.tratamientoItem.update({
+      where: { id: Number(req.params.id) },
+      data: { descripcion, dosis, costo },
+    });
+    res.json(item);
+  } catch (err) {
+    if (err.code === "P2025") return res.status(404).json({ error: "Registro no encontrado" });
+    throw err;
+  }
+}
