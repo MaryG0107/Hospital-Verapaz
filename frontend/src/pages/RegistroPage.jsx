@@ -9,6 +9,9 @@ import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../utils/roles";
+import { DEPARTAMENTOS_GUATEMALA, ESTADOS_CIVILES } from "../utils/guatemala";
+
+const OTRO_LUGAR = "__otro__";
 
 const CAMPOS_VACIOS = {
   nombreCompleto: "", dpi: "", direccion: "", lugarNacimiento: "", fechaNacimiento: "",
@@ -33,6 +36,7 @@ export function RegistroPage({ onVerExpediente }) {
   const { data: pacientes, loading, error, reload } = useFetch(`/pacientes${buscar ? `?buscar=${encodeURIComponent(buscar)}` : ""}`);
 
   const [form, setForm] = useState(CAMPOS_VACIOS);
+  const [lugarOtro, setLugarOtro] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
@@ -48,6 +52,7 @@ export function RegistroPage({ onVerExpediente }) {
       const paciente = await api.post("/pacientes", { ...form, edad: form.edad ? Number(form.edad) : undefined });
       setMensaje({ tone: "success", texto: `Paciente registrado con historia clínica ${paciente.historiaClinica}` });
       setForm(CAMPOS_VACIOS);
+      setLugarOtro(false);
       reload();
     } catch (err) {
       setMensaje({ tone: "error", texto: err.message });
@@ -88,7 +93,39 @@ export function RegistroPage({ onVerExpediente }) {
             <FormField label="Nombre completo"><TextInput required value={form.nombreCompleto} onChange={(e) => setCampo("nombreCompleto", e.target.value)} /></FormField>
             <FormField label="DPI"><TextInput required value={form.dpi} onChange={(e) => setCampo("dpi", e.target.value)} /></FormField>
             <FormField label="Fecha de nacimiento"><TextInput type="date" value={form.fechaNacimiento} onChange={(e) => setCampo("fechaNacimiento", e.target.value)} /></FormField>
-            <FormField label="Lugar de nacimiento"><TextInput value={form.lugarNacimiento} onChange={(e) => setCampo("lugarNacimiento", e.target.value)} /></FormField>
+            <FormField label="Lugar de nacimiento">
+              <Select
+                value={lugarOtro ? OTRO_LUGAR : form.lugarNacimiento}
+                onChange={(e) => {
+                  if (e.target.value === OTRO_LUGAR) {
+                    setLugarOtro(true);
+                    setCampo("lugarNacimiento", "");
+                  } else {
+                    setLugarOtro(false);
+                    setCampo("lugarNacimiento", e.target.value);
+                  }
+                }}
+              >
+                <option value="">Seleccionar…</option>
+                {DEPARTAMENTOS_GUATEMALA.map((d) => (
+                  <optgroup key={d.departamento} label={d.departamento}>
+                    {d.municipios.map((m) => {
+                      const valor = `${m}, ${d.departamento}`;
+                      return <option key={valor} value={valor}>{m}</option>;
+                    })}
+                  </optgroup>
+                ))}
+                <option value={OTRO_LUGAR}>Otro (fuera de Guatemala)…</option>
+              </Select>
+              {lugarOtro && (
+                <TextInput
+                  className="mt-2"
+                  placeholder="Especifique el lugar de nacimiento"
+                  value={form.lugarNacimiento}
+                  onChange={(e) => setCampo("lugarNacimiento", e.target.value)}
+                />
+              )}
+            </FormField>
             <FormField label="Dirección"><TextInput value={form.direccion} onChange={(e) => setCampo("direccion", e.target.value)} /></FormField>
             <FormField label="Teléfono"><TextInput value={form.telefono} onChange={(e) => setCampo("telefono", e.target.value)} /></FormField>
             <FormField label="Edad"><TextInput type="number" min="0" value={form.edad} onChange={(e) => setCampo("edad", e.target.value)} /></FormField>
@@ -99,7 +136,12 @@ export function RegistroPage({ onVerExpediente }) {
                 <option value="Masculino">Masculino</option>
               </Select>
             </FormField>
-            <FormField label="Estado civil"><TextInput value={form.estadoCivil} onChange={(e) => setCampo("estadoCivil", e.target.value)} /></FormField>
+            <FormField label="Estado civil">
+              <Select value={form.estadoCivil} onChange={(e) => setCampo("estadoCivil", e.target.value)}>
+                <option value="">Seleccionar…</option>
+                {ESTADOS_CIVILES.map((ec) => <option key={ec} value={ec}>{ec}</option>)}
+              </Select>
+            </FormField>
             <FormField label="Ocupación"><TextInput value={form.ocupacion} onChange={(e) => setCampo("ocupacion", e.target.value)} /></FormField>
             <FormField label="Religión"><TextInput value={form.religion} onChange={(e) => setCampo("religion", e.target.value)} /></FormField>
             <FormField label="Nacionalidad"><TextInput value={form.nacionalidad} onChange={(e) => setCampo("nacionalidad", e.target.value)} /></FormField>
