@@ -5,13 +5,22 @@ import { Table } from "../components/Table";
 import { Button } from "../components/Button";
 import { Banner } from "../components/Banner";
 import { FormField, TextInput, Select } from "../components/FormField";
+import { Combobox } from "../components/Combobox";
 import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../utils/roles";
 import { DEPARTAMENTOS_GUATEMALA, ESTADOS_CIVILES } from "../utils/guatemala";
+import { formatearDPI, limpiarDPI, validarDPI } from "../utils/dpi";
+import { COLORS } from "../styles/tokens";
 
-const OTRO_LUGAR = "__otro__";
+const OTRO = "__otro__";
+
+const PARENTESCOS = ["Esposo/a", "Padre", "Madre", "Hijo/a", "Hermano/a", "Abuelo/a", "Tío/a", "Amigo/a", "Vecino/a"];
+
+const OPCIONES_LUGAR = DEPARTAMENTOS_GUATEMALA.flatMap((d) =>
+  d.municipios.map((m) => ({ value: `${m}, ${d.departamento}`, label: m, group: d.departamento }))
+);
 
 const CAMPOS_VACIOS = {
   nombreCompleto: "", dpi: "", direccion: "", lugarNacimiento: "", fechaNacimiento: "",
@@ -37,8 +46,12 @@ export function RegistroPage({ onVerExpediente }) {
 
   const [form, setForm] = useState(CAMPOS_VACIOS);
   const [lugarOtro, setLugarOtro] = useState(false);
+  const [parentescoOtro, setParentescoOtro] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+
+  const dpiEstado = validarDPI(form.dpi);
+  const DPI_COLOR = { valido: COLORS.green, invalido: COLORS.red, incompleto: "#B08B2E", vacio: "#888" };
 
   function setCampo(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }));
@@ -46,6 +59,10 @@ export function RegistroPage({ onVerExpediente }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (dpiEstado.estado !== "valido") {
+      setMensaje({ tone: "error", texto: dpiEstado.mensaje || "Ingrese un DPI completo y válido." });
+      return;
+    }
     setGuardando(true);
     setMensaje(null);
     try {
@@ -53,6 +70,7 @@ export function RegistroPage({ onVerExpediente }) {
       setMensaje({ tone: "success", texto: `Paciente registrado con historia clínica ${paciente.historiaClinica}` });
       setForm(CAMPOS_VACIOS);
       setLugarOtro(false);
+      setParentescoOtro(false);
       reload();
     } catch (err) {
       setMensaje({ tone: "error", texto: err.message });
@@ -91,40 +109,42 @@ export function RegistroPage({ onVerExpediente }) {
           {mensaje && <Banner tone={mensaje.tone}>{mensaje.texto}</Banner>}
           <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4">
             <FormField label="Nombre completo"><TextInput required value={form.nombreCompleto} onChange={(e) => setCampo("nombreCompleto", e.target.value)} /></FormField>
-            <FormField label="DPI"><TextInput required value={form.dpi} onChange={(e) => setCampo("dpi", e.target.value)} /></FormField>
+            <FormField label="DPI">
+              <TextInput
+                required
+                value={formatearDPI(form.dpi)}
+                onChange={(e) => setCampo("dpi", limpiarDPI(e.target.value))}
+                placeholder="0000 00000 0000"
+                inputMode="numeric"
+              />
+              {dpiEstado.mensaje && (
+                <p className="text-xs mt-1" style={{ color: DPI_COLOR[dpiEstado.estado] }}>{dpiEstado.mensaje}</p>
+              )}
+            </FormField>
             <FormField label="Fecha de nacimiento"><TextInput type="date" value={form.fechaNacimiento} onChange={(e) => setCampo("fechaNacimiento", e.target.value)} /></FormField>
             <FormField label="Lugar de nacimiento">
-              <Select
-                value={lugarOtro ? OTRO_LUGAR : form.lugarNacimiento}
-                onChange={(e) => {
-                  if (e.target.value === OTRO_LUGAR) {
-                    setLugarOtro(true);
-                    setCampo("lugarNacimiento", "");
-                  } else {
-                    setLugarOtro(false);
-                    setCampo("lugarNacimiento", e.target.value);
-                  }
-                }}
-              >
-                <option value="">Seleccionar…</option>
-                {DEPARTAMENTOS_GUATEMALA.map((d) => (
-                  <optgroup key={d.departamento} label={d.departamento}>
-                    {d.municipios.map((m) => {
-                      const valor = `${m}, ${d.departamento}`;
-                      return <option key={valor} value={valor}>{m}</option>;
-                    })}
-                  </optgroup>
-                ))}
-                <option value={OTRO_LUGAR}>Otro (fuera de Guatemala)…</option>
-              </Select>
-              {lugarOtro && (
+              {lugarOtro ? (
                 <TextInput
-                  className="mt-2"
                   placeholder="Especifique el lugar de nacimiento"
                   value={form.lugarNacimiento}
                   onChange={(e) => setCampo("lugarNacimiento", e.target.value)}
                 />
+              ) : (
+                <Combobox
+                  options={OPCIONES_LUGAR}
+                  value={form.lugarNacimiento}
+                  onChange={(v) => setCampo("lugarNacimiento", v)}
+                  placeholder="Escriba para buscar un municipio…"
+                />
               )}
+              <button
+                type="button"
+                onClick={() => { setLugarOtro((v) => !v); setCampo("lugarNacimiento", ""); }}
+                className="text-xs mt-1"
+                style={{ color: COLORS.navy }}
+              >
+                {lugarOtro ? "← Buscar en la lista de Guatemala" : "¿Nació fuera de Guatemala? Escríbalo aquí"}
+              </button>
             </FormField>
             <FormField label="Dirección"><TextInput value={form.direccion} onChange={(e) => setCampo("direccion", e.target.value)} /></FormField>
             <FormField label="Teléfono"><TextInput value={form.telefono} onChange={(e) => setCampo("telefono", e.target.value)} /></FormField>
@@ -148,8 +168,33 @@ export function RegistroPage({ onVerExpediente }) {
             <FormField label="Nombre del cónyuge"><TextInput value={form.nombreConyuge} onChange={(e) => setCampo("nombreConyuge", e.target.value)} /></FormField>
             <FormField label="Nombre del padre"><TextInput value={form.nombrePadre} onChange={(e) => setCampo("nombrePadre", e.target.value)} /></FormField>
             <FormField label="Nombre de la madre"><TextInput value={form.nombreMadre} onChange={(e) => setCampo("nombreMadre", e.target.value)} /></FormField>
-            <FormField label="Contacto de emergencia"><TextInput value={form.contactoEmergencia} onChange={(e) => setCampo("contactoEmergencia", e.target.value)} /></FormField>
-            <FormField label="Parentesco"><TextInput value={form.parentesco} onChange={(e) => setCampo("parentesco", e.target.value)} /></FormField>
+            <FormField label="Contacto de emergencia"><TextInput placeholder="Nombre de la persona a contactar" value={form.contactoEmergencia} onChange={(e) => setCampo("contactoEmergencia", e.target.value)} /></FormField>
+            <FormField label="Parentesco (relación con el contacto de emergencia)">
+              {parentescoOtro ? (
+                <>
+                  <TextInput placeholder="Especifique el parentesco" value={form.parentesco} onChange={(e) => setCampo("parentesco", e.target.value)} />
+                  <button type="button" onClick={() => { setParentescoOtro(false); setCampo("parentesco", ""); }} className="text-xs mt-1" style={{ color: COLORS.navy }}>
+                    ← Volver a la lista
+                  </button>
+                </>
+              ) : (
+                <Select
+                  value={form.parentesco}
+                  onChange={(e) => {
+                    if (e.target.value === OTRO) {
+                      setParentescoOtro(true);
+                      setCampo("parentesco", "");
+                    } else {
+                      setCampo("parentesco", e.target.value);
+                    }
+                  }}
+                >
+                  <option value="">Seleccionar…</option>
+                  {PARENTESCOS.map((p) => <option key={p} value={p}>{p}</option>)}
+                  <option value={OTRO}>Otro…</option>
+                </Select>
+              )}
+            </FormField>
             <div className="col-span-3 mt-2">
               <Button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar paciente"}</Button>
             </div>
