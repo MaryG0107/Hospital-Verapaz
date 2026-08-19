@@ -18,6 +18,8 @@ const OTRO = "__otro__";
 
 const PARENTESCOS = ["Esposo/a", "Padre", "Madre", "Hijo/a", "Hermano/a", "Abuelo/a", "Tío/a", "Amigo/a", "Vecino/a"];
 
+const RELIGIONES = ["Católica", "Evangélica / Cristiana", "Testigo de Jehová", "Mormona (SUD)", "Espiritualidad Maya", "Ninguna / Atea"];
+
 const OPCIONES_LUGAR = DEPARTAMENTOS_GUATEMALA.flatMap((d) =>
   d.municipios.map((m) => ({ value: `${m}, ${d.departamento}`, label: m, group: d.departamento }))
 );
@@ -47,6 +49,7 @@ export function RegistroPage({ onVerExpediente }) {
   const [form, setForm] = useState(CAMPOS_VACIOS);
   const [lugarOtro, setLugarOtro] = useState(false);
   const [parentescoOtro, setParentescoOtro] = useState(false);
+  const [religionOtro, setReligionOtro] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
@@ -71,6 +74,7 @@ export function RegistroPage({ onVerExpediente }) {
       setForm(CAMPOS_VACIOS);
       setLugarOtro(false);
       setParentescoOtro(false);
+      setReligionOtro(false);
       reload();
     } catch (err) {
       setMensaje({ tone: "error", texto: err.message });
@@ -163,7 +167,32 @@ export function RegistroPage({ onVerExpediente }) {
               </Select>
             </FormField>
             <FormField label="Ocupación"><TextInput value={form.ocupacion} onChange={(e) => setCampo("ocupacion", e.target.value)} /></FormField>
-            <FormField label="Religión"><TextInput value={form.religion} onChange={(e) => setCampo("religion", e.target.value)} /></FormField>
+            <FormField label="Religión">
+              {religionOtro ? (
+                <>
+                  <TextInput placeholder="Especifique la religión" value={form.religion} onChange={(e) => setCampo("religion", e.target.value)} />
+                  <button type="button" onClick={() => { setReligionOtro(false); setCampo("religion", ""); }} className="text-xs mt-1" style={{ color: COLORS.navy }}>
+                    ← Volver a la lista
+                  </button>
+                </>
+              ) : (
+                <Select
+                  value={form.religion}
+                  onChange={(e) => {
+                    if (e.target.value === OTRO) {
+                      setReligionOtro(true);
+                      setCampo("religion", "");
+                    } else {
+                      setCampo("religion", e.target.value);
+                    }
+                  }}
+                >
+                  <option value="">Seleccionar…</option>
+                  {RELIGIONES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  <option value={OTRO}>Otro…</option>
+                </Select>
+              )}
+            </FormField>
             <FormField label="Nacionalidad"><TextInput value={form.nacionalidad} onChange={(e) => setCampo("nacionalidad", e.target.value)} /></FormField>
             <FormField label="Nombre del cónyuge"><TextInput value={form.nombreConyuge} onChange={(e) => setCampo("nombreConyuge", e.target.value)} /></FormField>
             <FormField label="Nombre del padre"><TextInput value={form.nombrePadre} onChange={(e) => setCampo("nombrePadre", e.target.value)} /></FormField>
