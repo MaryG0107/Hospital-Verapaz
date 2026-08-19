@@ -103,14 +103,40 @@ Ver `backend/prisma/schema.prisma` para el modelo de datos completo (con
 relaciones entre entidades) y `backend/prisma/seed.js` para datos de prueba
 (un usuario por rol + inventario inicial de farmacia).
 
+También hay un módulo de **usuarios** (`/api/usuarios`, solo Administrador)
+para listar, crear y reasignar rol/permiso de autogenerar token (RF-32,
+RF-34) desde la interfaz de Seguridad y Roles.
+
+## Estado del frontend
+
+El frontend ya no usa datos de ejemplo: está reestructurado en
+`components/`, `hooks/`, `pages/` y `context/` (como describe la estructura
+de carpetas de arriba) y cada módulo llama a la API real:
+
+- Login real contra `/api/auth/login`, sesión persistida en `localStorage`.
+- Registro de pacientes con búsqueda (RF-02, con debounce) y manejo del
+  error de DPI duplicado (RF-04).
+- Expediente Clínico con el flujo completo de token temporal: el
+  Administrador entra directo, los demás roles autogeneran su token (si
+  tienen el permiso, RF-34) o pegan uno emitido por el Administrador desde
+  Seguridad y Roles (RF-33).
+- Farmacia con entradas/salidas, y Área Financiera generando facturas desde
+  el costeo pendiente del paciente.
+- Cada página oculta las acciones de escritura que el rol del usuario no
+  tiene permitido hacer en el backend (ver `frontend/src/utils/roles.js`).
+
+Se probó de punta a punta (login, crear paciente, ciclo completo de token
+temporal, venta de farmacia con descuento de stock, facturación con
+transacción) con un smoke test que reveló y permitió corregir un bug real:
+los medicamentos de farmacia usados de forma intrahospitalaria no se
+estaban cargando al costeo del paciente.
+
 ## Pendientes
 
 - Definir servidor/hosting (local vs. nube).
-- Levantar una base de datos PostgreSQL real, completar `DATABASE_URL` en
-  `.env` y ejecutar `npx prisma migrate dev` + `npm run prisma:seed`.
-- Conectar el frontend (`src/services/api.js`) con los endpoints reales
-  del backend, reemplazando los datos de ejemplo (mock) del prototipo.
-- Reestructurar `frontend/src/App.jsx` en componentes/páginas separados por
-  módulo, tal como describe la estructura de carpetas de este README.
-- Inicializar el repositorio Git (aún no existe) y hacer el primer commit.
 - Elaborar los diagramas de actividades por proceso (docs/diagramas/).
+- Revisar visualmente la interfaz en el navegador (las pruebas hasta ahora
+  fueron contra la API con curl/scripts, no clic a clic en la UI).
+- Evaluar migrar la navegación interna a `react-router-dom` (ya está
+  instalado pero el cambio de página sigue siendo con estado de React, no
+  con URLs).
