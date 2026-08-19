@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 
 import authRoutes from "./routes/auth.routes.js";
+import usuariosRoutes from "./routes/usuarios.routes.js";
 import pacientesRoutes from "./routes/pacientes.routes.js";
 import expedientesRoutes from "./routes/expedientes.routes.js";
 import tratamientosRoutes from "./routes/tratamientos.routes.js";
@@ -19,7 +20,8 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas por modulo (RF-01 a RF-36, ver docs/Estructura_y_Requerimientos.docx)
-app.use("/api/auth", authRoutes);              // Modulo 8 - Seguridad y Roles
+app.use("/api/auth", authRoutes);               // Modulo 8 - Seguridad y Roles
+app.use("/api/usuarios", usuariosRoutes);       // Modulo 8 - Seguridad y Roles
 app.use("/api/pacientes", pacientesRoutes);     // Modulo 1 - Registro y Admision
 app.use("/api/expedientes", expedientesRoutes); // Modulo 2 - Expediente Clinico
 app.use("/api/tratamientos", tratamientosRoutes); // Modulo 3 - Tratamiento

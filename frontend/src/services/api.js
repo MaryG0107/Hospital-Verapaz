@@ -1,5 +1,4 @@
-// Punto único de conexión al backend (Express).
-// Mientras no haya servidor/DB definitivo, esto apunta a http://localhost:4000/api
+// Punto único de conexión al backend (Express). Vite hace proxy de /api -> http://localhost:4000
 const BASE_URL = "/api";
 
 async function request(path, options = {}) {
@@ -12,13 +11,16 @@ async function request(path, options = {}) {
       ...options.headers,
     },
   });
-  if (!res.ok) throw new Error(`Error ${res.status} al llamar ${path}`);
-  return res.json();
+
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.error || `Error ${res.status} al llamar ${path}`);
+  }
+  return body;
 }
 
 export const api = {
-  get: (path) => request(path),
-  post: (path, body) => request(path, { method: "POST", body: JSON.stringify(body) }),
-  put: (path, body) => request(path, { method: "PUT", body: JSON.stringify(body) }),
-  del: (path) => request(path, { method: "DELETE" }),
+  get: (path, options) => request(path, options),
+  post: (path, body, options) => request(path, { ...options, method: "POST", body: JSON.stringify(body) }),
+  put: (path, body, options) => request(path, { ...options, method: "PUT", body: JSON.stringify(body) }),
 };

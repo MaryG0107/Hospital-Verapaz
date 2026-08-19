@@ -14,8 +14,13 @@ export async function generarFacturaHospital({ pacienteId, costoHospital, formaP
       throw error;
     }
 
+    // RF-15: tanto los insumos intrahospitalarios como los medicamentos de
+    // farmacia consumidos durante la estadia (origen "farmacia" por uso
+    // intrahospitalario, distinto de una venta directa) se cargan al costeo
+    // del paciente. Solo las ventas directas de farmacia (VentaFarmacia) se
+    // facturan aparte.
     const pendientes = await tx.tratamientoItem.findMany({
-      where: { pacienteId, origen: "intrahospitalario", facturado: false },
+      where: { pacienteId, facturado: false },
     });
     const costoTratamiento = pendientes.reduce((suma, item) => suma + Number(item.costo), 0);
     const total = Number(costoHospital) + costoTratamiento;

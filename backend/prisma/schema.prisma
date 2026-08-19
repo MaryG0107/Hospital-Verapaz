@@ -138,7 +138,9 @@ model TratamientoItem {
   descripcion  String
   dosis        String?
   costo        Decimal  @db.Decimal(10, 2)
-  origen       String   // "intrahospitalario" | "farmacia"
+  origen       String   // "intrahospitalario" (insumo/procedimiento) | "farmacia" (medicamento de farmacia usado en el paciente)
+  // RF-15: ambos origenes se cargan al costeo del paciente (FacturaHospital);
+  // solo una venta directa de farmacia (VentaFarmacia) se factura aparte.
   facturado    Boolean  @default(false) // evita doble cobro al facturar (RNF-13)
   fecha        DateTime @default(now())
 
