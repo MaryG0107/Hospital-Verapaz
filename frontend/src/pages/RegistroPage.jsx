@@ -10,8 +10,9 @@ import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../utils/roles";
-import { DEPARTAMENTOS_GUATEMALA, ESTADOS_CIVILES } from "../utils/guatemala";
+import { DEPARTAMENTOS_GUATEMALA, ESTADOS_CIVILES, NACIONALIDADES } from "../utils/guatemala";
 import { formatearDPI, limpiarDPI, validarDPI } from "../utils/dpi";
+import { formatearTelefono, limpiarTelefono, telefonoIncompleto } from "../utils/telefono";
 import { COLORS } from "../styles/tokens";
 
 const OTRO = "__otro__";
@@ -28,7 +29,7 @@ const CAMPOS_VACIOS = {
   nombreCompleto: "", dpi: "", direccion: "", lugarNacimiento: "", fechaNacimiento: "",
   telefono: "", edad: "", sexo: "", estadoCivil: "", ocupacion: "", religion: "",
   nacionalidad: "", nombreConyuge: "", nombrePadre: "", nombreMadre: "",
-  contactoEmergencia: "", parentesco: "",
+  contactoEmergencia: "", telefonoEmergencia: "", parentesco: "",
 };
 
 export function RegistroPage({ onVerExpediente }) {
@@ -50,6 +51,7 @@ export function RegistroPage({ onVerExpediente }) {
   const [lugarOtro, setLugarOtro] = useState(false);
   const [parentescoOtro, setParentescoOtro] = useState(false);
   const [religionOtro, setReligionOtro] = useState(false);
+  const [nacionalidadOtro, setNacionalidadOtro] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
@@ -75,6 +77,7 @@ export function RegistroPage({ onVerExpediente }) {
       setLugarOtro(false);
       setParentescoOtro(false);
       setReligionOtro(false);
+      setNacionalidadOtro(false);
       reload();
     } catch (err) {
       setMensaje({ tone: "error", texto: err.message });
@@ -113,7 +116,7 @@ export function RegistroPage({ onVerExpediente }) {
           {mensaje && <Banner tone={mensaje.tone}>{mensaje.texto}</Banner>}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <FormField label="Nombre completo"><TextInput required value={form.nombreCompleto} onChange={(e) => setCampo("nombreCompleto", e.target.value)} /></FormField>
-            <FormField label="DPI">
+            <FormField label="DPI / CUI">
               <TextInput
                 required
                 value={formatearDPI(form.dpi)}
@@ -123,6 +126,9 @@ export function RegistroPage({ onVerExpediente }) {
               />
               {dpiEstado.mensaje && (
                 <p className="text-xs mt-1" style={{ color: DPI_COLOR[dpiEstado.estado] }}>{dpiEstado.mensaje}</p>
+              )}
+              {!dpiEstado.mensaje && (
+                <p className="text-xs mt-1" style={{ color: "#999" }}>Si es menor de edad, use el CUI del certificado de nacimiento — es el mismo número de 13 dígitos.</p>
               )}
             </FormField>
             <FormField label="Fecha de nacimiento"><TextInput type="date" value={form.fechaNacimiento} onChange={(e) => setCampo("fechaNacimiento", e.target.value)} /></FormField>
@@ -151,7 +157,17 @@ export function RegistroPage({ onVerExpediente }) {
               </button>
             </FormField>
             <FormField label="Dirección"><TextInput value={form.direccion} onChange={(e) => setCampo("direccion", e.target.value)} /></FormField>
-            <FormField label="Teléfono"><TextInput value={form.telefono} onChange={(e) => setCampo("telefono", e.target.value)} /></FormField>
+            <FormField label="Teléfono">
+              <TextInput
+                value={formatearTelefono(form.telefono)}
+                onChange={(e) => setCampo("telefono", limpiarTelefono(e.target.value))}
+                placeholder="0000 0000"
+                inputMode="numeric"
+              />
+              {telefonoIncompleto(form.telefono) && (
+                <p className="text-xs mt-1" style={{ color: "#B08B2E" }}>El teléfono debe tener 8 dígitos.</p>
+              )}
+            </FormField>
             <FormField label="Edad"><TextInput type="number" min="0" value={form.edad} onChange={(e) => setCampo("edad", e.target.value)} /></FormField>
             <FormField label="Sexo">
               <Select value={form.sexo} onChange={(e) => setCampo("sexo", e.target.value)}>
@@ -193,11 +209,47 @@ export function RegistroPage({ onVerExpediente }) {
                 </Select>
               )}
             </FormField>
-            <FormField label="Nacionalidad"><TextInput value={form.nacionalidad} onChange={(e) => setCampo("nacionalidad", e.target.value)} /></FormField>
+            <FormField label="Nacionalidad">
+              {nacionalidadOtro ? (
+                <>
+                  <TextInput placeholder="Especifique la nacionalidad" value={form.nacionalidad} onChange={(e) => setCampo("nacionalidad", e.target.value)} />
+                  <button type="button" onClick={() => { setNacionalidadOtro(false); setCampo("nacionalidad", ""); }} className="text-xs mt-1" style={{ color: COLORS.navy }}>
+                    ← Volver a la lista
+                  </button>
+                </>
+              ) : (
+                <Select
+                  value={form.nacionalidad}
+                  onChange={(e) => {
+                    if (e.target.value === OTRO) {
+                      setNacionalidadOtro(true);
+                      setCampo("nacionalidad", "");
+                    } else {
+                      setCampo("nacionalidad", e.target.value);
+                    }
+                  }}
+                >
+                  <option value="">Seleccionar…</option>
+                  {NACIONALIDADES.map((n) => <option key={n} value={n}>{n}</option>)}
+                  <option value={OTRO}>Otra…</option>
+                </Select>
+              )}
+            </FormField>
             <FormField label="Nombre del cónyuge"><TextInput value={form.nombreConyuge} onChange={(e) => setCampo("nombreConyuge", e.target.value)} /></FormField>
             <FormField label="Nombre del padre"><TextInput value={form.nombrePadre} onChange={(e) => setCampo("nombrePadre", e.target.value)} /></FormField>
             <FormField label="Nombre de la madre"><TextInput value={form.nombreMadre} onChange={(e) => setCampo("nombreMadre", e.target.value)} /></FormField>
-            <FormField label="Contacto de emergencia"><TextInput placeholder="Nombre de la persona a contactar" value={form.contactoEmergencia} onChange={(e) => setCampo("contactoEmergencia", e.target.value)} /></FormField>
+            <FormField label="Nombre del contacto de emergencia"><TextInput placeholder="Nombre de la persona a contactar" value={form.contactoEmergencia} onChange={(e) => setCampo("contactoEmergencia", e.target.value)} /></FormField>
+            <FormField label="Teléfono del contacto de emergencia">
+              <TextInput
+                value={formatearTelefono(form.telefonoEmergencia)}
+                onChange={(e) => setCampo("telefonoEmergencia", limpiarTelefono(e.target.value))}
+                placeholder="0000 0000"
+                inputMode="numeric"
+              />
+              {telefonoIncompleto(form.telefonoEmergencia) && (
+                <p className="text-xs mt-1" style={{ color: "#B08B2E" }}>El teléfono debe tener 8 dígitos.</p>
+              )}
+            </FormField>
             <FormField label="Parentesco (relación con el contacto de emergencia)">
               {parentescoOtro ? (
                 <>

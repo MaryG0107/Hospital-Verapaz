@@ -25,3 +25,11 @@ export const DEPARTAMENTOS_GUATEMALA = [
 ];
 
 export const ESTADOS_CIVILES = ["Soltero/a", "Casado/a", "Unido/a de hecho", "Divorciado/a", "Viudo/a"];
+
+// Nacionalidades mas frecuentes para un hospital en Coban (Guatemala y
+// paises vecinos primero); "Otra" abre un campo de texto libre.
+export const NACIONALIDADES = [
+  "Guatemalteca", "Mexicana", "Beliceña", "Hondureña", "Salvadoreña",
+  "Nicaragüense", "Costarricense", "Panameña", "Estadounidense",
+  "Colombiana", "Venezolana",
+];

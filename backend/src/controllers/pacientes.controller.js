@@ -4,7 +4,7 @@ import { prisma } from "../config/prisma.js";
 const CAMPOS_PACIENTE = [
   "nombreCompleto", "dpi", "direccion", "lugarNacimiento", "fechaNacimiento",
   "telefono", "edad", "sexo", "estadoCivil", "ocupacion", "religion", "nacionalidad",
-  "nombreConyuge", "nombrePadre", "nombreMadre", "contactoEmergencia", "parentesco",
+  "nombreConyuge", "nombrePadre", "nombreMadre", "contactoEmergencia", "telefonoEmergencia", "parentesco",
   "referidoDe", "medicoReferenteId", "serviciosSolicitados", "impresionClinicaIngreso",
   "fechaIngreso", "fechaEgreso", "diagnosticoEgresoCodigo", "complicacionesCodigo",
   "operacionesCodigo", "condicionEgreso", "autopsia", "causaMuerte",
