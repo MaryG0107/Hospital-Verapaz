@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "../services/api";
 
 const AuthContext = createContext(null);
@@ -8,12 +8,14 @@ export function AuthProvider({ children }) {
     const raw = localStorage.getItem("usuario");
     return raw ? JSON.parse(raw) : null;
   });
+  const [sesionExpirada, setSesionExpirada] = useState(false);
 
   // RF-29: inicio de sesion contra el backend (bcrypt + JWT)
   async function login(correo, password) {
     const data = await api.post("/auth/login", { correo, password });
     localStorage.setItem("token", data.token);
     localStorage.setItem("usuario", JSON.stringify(data.usuario));
+    setSesionExpirada(false);
     setUsuario(data.usuario);
   }
 
@@ -23,8 +25,20 @@ export function AuthProvider({ children }) {
     setUsuario(null);
   }
 
+  // Si el JWT expira o deja de ser valido, api.js dispara este evento:
+  // cerramos sesion automaticamente en vez de dejar la app rota mostrando
+  // "Token invalido" en cada pantalla (RF-29).
+  useEffect(() => {
+    function alExpirar() {
+      setSesionExpirada(true);
+      logout();
+    }
+    window.addEventListener("auth:sesion-expirada", alExpirar);
+    return () => window.removeEventListener("auth:sesion-expirada", alExpirar);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ usuario, login, logout }}>
+    <AuthContext.Provider value={{ usuario, login, logout, sesionExpirada }}>
       {children}
     </AuthContext.Provider>
   );

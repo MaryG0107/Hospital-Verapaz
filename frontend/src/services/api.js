@@ -14,6 +14,12 @@ async function request(path, options = {}) {
 
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    // La sesion (JWT) expiro o dejo de ser valida: avisa a AuthContext para
+    // que cierre sesion y regrese al login, en vez de dejar la app mostrando
+    // errores de "Token invalido" en cada peticion.
+    if (res.status === 401 && token) {
+      window.dispatchEvent(new Event("auth:sesion-expirada"));
+    }
     throw new Error(body?.error || `Error ${res.status} al llamar ${path}`);
   }
   return body;

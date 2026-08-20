@@ -5,7 +5,7 @@ import { COLORS } from "../styles/tokens";
 import { useAuth } from "../context/AuthContext";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, sesionExpirada } = useAuth();
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -36,6 +36,7 @@ export function LoginPage() {
             </p>
           </div>
           <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+            {sesionExpirada && !error && <Banner tone="info">Su sesión expiró. Inicie sesión de nuevo.</Banner>}
             {error && <Banner tone="error">{error}</Banner>}
             <div>
               <label className="text-xs font-semibold" style={{ color: "#444" }}>Usuario</label>
