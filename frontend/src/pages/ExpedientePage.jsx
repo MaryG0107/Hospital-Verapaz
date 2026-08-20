@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { ShieldAlert, KeyRound } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Banner } from "../components/Banner";
+import { Modal } from "../components/Modal";
 import { FormField, TextInput, Select, TextArea } from "../components/FormField";
 import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
@@ -21,10 +23,11 @@ export function ExpedientePage({ pacienteIdInicial }) {
     if (!selectedId && pacientes?.length) setSelectedId(pacientes[0].id);
   }, [pacientes, selectedId]);
 
+  const [modalAbierto, setModalAbierto] = useState(false);
   const [tempToken, setTempToken] = useState("");
   const [tokenInfo, setTokenInfo] = useState(null);
   const [diagnostico, setDiagnostico] = useState(null);
-  const [estado, setEstado] = useState("idle"); // idle | cargando | visible | sin-permiso | sin-registro
+  const [estado, setEstado] = useState("idle"); // idle | cargando | visible | sin-registro
   const [mensajeError, setMensajeError] = useState(null);
 
   const [texto, setTexto] = useState("");
@@ -34,6 +37,11 @@ export function ExpedientePage({ pacienteIdInicial }) {
 
   function headersToken() {
     return esAdmin ? {} : { "x-temp-token": tempToken };
+  }
+
+  function abrirModal() {
+    setMensajeError(null);
+    setModalAbierto(true);
   }
 
   async function autogenerarToken() {
@@ -47,18 +55,27 @@ export function ExpedientePage({ pacienteIdInicial }) {
     }
   }
 
-  async function verDiagnostico() {
+  // RF-11: el Administrador confirma sin token; los demas roles necesitan
+  // uno vigente (RF-33/RF-34). El modal es el unico punto de entrada para
+  // ver el diagnostico, para dejar claro que es una accion sensible (RNF-08).
+  async function confirmarYVer() {
     setEstado("cargando");
     setMensajeError(null);
     try {
       const data = await api.get(`/expedientes/paciente/${selectedId}`, { headers: headersToken() });
       setDiagnostico(data);
       setEstado("visible");
+      setModalAbierto(false);
+      // el token es de un solo uso (RNF-12): ya se consumio al verificar,
+      // asi que no lo dejamos activo para el formulario de "Registrar diagnostico"
+      setTempToken("");
+      setTokenInfo(null);
     } catch (err) {
       if (err.message.includes("no tiene diagnostico")) {
         setEstado("sin-registro");
+        setModalAbierto(false);
       } else {
-        setEstado("sin-permiso");
+        setEstado("idle");
         setMensajeError(err.message);
       }
     }
@@ -94,6 +111,8 @@ export function ExpedientePage({ pacienteIdInicial }) {
             setSelectedId(Number(e.target.value));
             setEstado("idle");
             setDiagnostico(null);
+            setTempToken("");
+            setTokenInfo(null);
           }}
           style={{ maxWidth: 360 }}
         >
@@ -112,29 +131,11 @@ export function ExpedientePage({ pacienteIdInicial }) {
         </Card>
       )}
 
-      {!esAdmin && (
-        <Card style={{ marginBottom: 16 }}>
-          <div className="font-semibold text-sm mb-2">🔑 Token de acceso temporal (RF-33/RF-34)</div>
-          <div className="flex gap-2 items-end flex-wrap">
-            <FormField label="Token">
-              <TextInput value={tempToken} onChange={(e) => setTempToken(e.target.value)} placeholder="Pegue aquí el token" style={{ width: 320 }} />
-            </FormField>
-            {usuario.puedeAutogenerarToken && <Button variant="secondary" onClick={autogenerarToken}>Autogenerar token</Button>}
-          </div>
-          {tokenInfo && <p className="text-xs mt-2" style={{ color: COLORS.green }}>{tokenInfo}</p>}
-          {!usuario.puedeAutogenerarToken && (
-            <p className="text-xs mt-2" style={{ color: "#888" }}>No tiene permiso para autogenerar tokens. Solicítelo al Administrador.</p>
-          )}
-        </Card>
-      )}
-
       <div className="mb-4">
-        <Button onClick={verDiagnostico} disabled={!selectedId || (!esAdmin && !tempToken)}>
+        <Button onClick={abrirModal} disabled={!selectedId}>
           {estado === "cargando" ? "Consultando…" : "Ver diagnóstico"}
         </Button>
       </div>
-
-      {mensajeError && <Banner tone="error">{mensajeError}</Banner>}
 
       {estado === "visible" && diagnostico && (
         <Card style={{ border: `2px solid ${COLORS.gold}`, marginBottom: 16 }}>
@@ -149,6 +150,38 @@ export function ExpedientePage({ pacienteIdInicial }) {
       )}
 
       {estado === "sin-registro" && <Banner tone="info">Este paciente todavía no tiene un diagnóstico registrado.</Banner>}
+
+      <Modal open={modalAbierto} onClose={() => setModalAbierto(false)} title="Información médica confidencial" icon={ShieldAlert}>
+        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>
+          Está por ver el diagnóstico confidencial de <strong style={{ color: COLORS.text }}>{patient?.nombreCompleto}</strong>.
+          Esta acción queda registrada a su nombre (RNF-08).
+        </p>
+
+        {mensajeError && <Banner tone="error">{mensajeError}</Banner>}
+
+        {esAdmin ? (
+          <Button onClick={confirmarYVer} disabled={estado === "cargando"}>
+            {estado === "cargando" ? "Verificando…" : "Continuar y ver diagnóstico"}
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <FormField label="Token de acceso temporal (RF-33)">
+              <TextInput value={tempToken} onChange={(e) => setTempToken(e.target.value)} placeholder="Pegue aquí el token" />
+            </FormField>
+            {tokenInfo && <p className="text-xs -mt-1" style={{ color: COLORS.green }}>{tokenInfo}</p>}
+            {usuario.puedeAutogenerarToken ? (
+              <Button variant="secondary" onClick={autogenerarToken}>
+                <span className="flex items-center gap-1.5"><KeyRound size={14} /> Autogenerar token (RF-34)</span>
+              </Button>
+            ) : (
+              <p className="text-xs" style={{ color: "#888" }}>No tiene permiso para autogenerar tokens. Solicítelo al Administrador desde Seguridad y Roles.</p>
+            )}
+            <Button onClick={confirmarYVer} disabled={!tempToken || estado === "cargando"}>
+              {estado === "cargando" ? "Verificando…" : "Confirmar y ver diagnóstico"}
+            </Button>
+          </div>
+        )}
+      </Modal>
 
       {(esAdmin || tempToken) && (
         <Card>
