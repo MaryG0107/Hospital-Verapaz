@@ -4,6 +4,7 @@
 // puede ver o modificar el contenido de este controlador.
 import { prisma } from "../config/prisma.js";
 import { encrypt, decrypt } from "../utils/crypto.util.js";
+import { ROLES } from "../utils/roles.util.js";
 
 const KEY = process.env.ENCRYPTION_KEY;
 
@@ -30,6 +31,16 @@ export async function obtenerUno(req, res) {
     { encrypted: diagnostico.textoCifrado, iv: diagnostico.iv, authTag: diagnostico.authTag },
     KEY
   );
+
+  // RNF-08: deja constancia de quien vio el diagnostico y cuando
+  await prisma.accesoDiagnostico.create({
+    data: {
+      pacienteId: diagnostico.pacienteId,
+      usuarioId: req.user.id,
+      viaToken: req.user.rol !== ROLES.ADMIN,
+      tokenId: req.tempToken?.id ?? null,
+    },
+  });
 
   res.json({
     id: diagnostico.id,

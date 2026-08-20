@@ -12,5 +12,6 @@ router.get("/financiero", controller.financiero); // RF-21
 router.get("/admisiones", controller.admisiones);
 router.get("/facturacion-por-forma-pago", controller.facturacionPorFormaPago);
 router.get("/inventario-kardex", controller.inventarioKardex); // RNF-10
+router.get("/auditoria-diagnostico", controller.auditoriaDiagnostico); // RNF-08
 
 export default router;

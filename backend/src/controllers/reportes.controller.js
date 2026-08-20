@@ -62,3 +62,21 @@ export async function inventarioKardex(req, res) {
   });
   res.json(movimientos);
 }
+
+// RNF-08: quien vio el diagnostico confidencial de cada paciente y cuando
+export async function auditoriaDiagnostico(req, res) {
+  const { pacienteId, desde, hasta } = req.query;
+  const accesos = await prisma.accesoDiagnostico.findMany({
+    where: {
+      pacienteId: pacienteId ? Number(pacienteId) : undefined,
+      fecha: rangoFecha(desde, hasta),
+    },
+    orderBy: { fecha: "desc" },
+    take: 200,
+    include: {
+      usuario: { select: { nombre: true, rol: true } },
+      paciente: { select: { nombreCompleto: true, historiaClinica: true } },
+    },
+  });
+  res.json(accesos);
+}

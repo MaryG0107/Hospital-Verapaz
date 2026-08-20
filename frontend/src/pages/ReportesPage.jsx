@@ -25,6 +25,7 @@ export function ReportesPage() {
   const { data: admisiones } = useFetch("/reportes/admisiones");
   const { data: porFormaPago } = useFetch("/reportes/facturacion-por-forma-pago");
   const { data: kardex } = useFetch("/reportes/inventario-kardex");
+  const { data: auditoria } = useFetch("/reportes/auditoria-diagnostico");
 
   return (
     <div>
@@ -66,7 +67,7 @@ export function ReportesPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card style={{ marginBottom: 16 }}>
         <div className="font-semibold text-sm mb-3">Kardex de inventario de farmacia (RNF-10)</div>
         <Table
           headers={["Medicamento", "Tipo", "Cantidad", "Motivo", "Fecha"]}
@@ -79,6 +80,29 @@ export function ReportesPage() {
               <td className="px-4 py-3">{m.cantidad}</td>
               <td className="px-4 py-3" style={{ color: "#666" }}>{m.motivo || "—"}</td>
               <td className="px-4 py-3" style={{ color: "#666" }}>{new Date(m.fecha).toLocaleString()}</td>
+            </>
+          )}
+        />
+      </Card>
+
+      <Card>
+        <div className="font-semibold text-sm mb-1">Auditoría de accesos al diagnóstico confidencial (RNF-08)</div>
+        <p className="text-xs mb-3" style={{ color: "#888" }}>
+          Quién vio el diagnóstico de cada paciente, cuándo, y si fue como Administrador (acceso directo) o con un token temporal.
+        </p>
+        <Table
+          headers={["Usuario", "Rol", "Paciente", "Tipo de acceso", "Fecha"]}
+          rows={auditoria || []}
+          emptyMessage="Sin accesos registrados."
+          renderRow={(a) => (
+            <>
+              <td className="px-4 py-3 font-semibold">{a.usuario?.nombre}</td>
+              <td className="px-4 py-3" style={{ color: "#666" }}>{a.usuario?.rol}</td>
+              <td className="px-4 py-3">{a.paciente?.nombreCompleto} <span style={{ color: "#999" }}>({a.paciente?.historiaClinica})</span></td>
+              <td className="px-4 py-3 font-semibold" style={{ color: a.viaToken ? COLORS.gold : COLORS.navy }}>
+                {a.viaToken ? "Con token temporal" : "Administrador (directo)"}
+              </td>
+              <td className="px-4 py-3" style={{ color: "#666" }}>{new Date(a.fecha).toLocaleString()}</td>
             </>
           )}
         />

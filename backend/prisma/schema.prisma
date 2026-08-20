@@ -27,6 +27,7 @@ model Usuario {
   recetas          Receta[]        @relation("RecetaMedico")
   visitasRegistradas BitacoraVisita[] @relation("BitacoraAutor")
   ventasFarmacia   VentaFarmacia[] @relation("VentaRegistradoPor")
+  accesosDiagnostico AccesoDiagnostico[] @relation("AccesoDiagnosticoUsuario")
 
   @@index([rol])
 }
@@ -44,6 +45,7 @@ model TokenTemporal {
   usuario  Usuario   @relation("TokenUsuario", fields: [usuarioId], references: [id])
   emisor   Usuario   @relation("TokenEmisor", fields: [emitidoPor], references: [id])
   paciente Paciente? @relation(fields: [pacienteId], references: [id])
+  accesos  AccesoDiagnostico[]
 
   @@index([usuarioId])
   @@index([expiraEn])
@@ -97,6 +99,7 @@ model Paciente {
   facturasHospital   FacturaHospital[]
   visitas            BitacoraVisita[]
   tokensTemporales   TokenTemporal[]
+  accesosDiagnostico AccesoDiagnostico[]
 
   @@index([nombreCompleto])
 }
@@ -129,6 +132,26 @@ model Diagnostico {
   registrador Usuario @relation("DiagnosticoRegistradoPor", fields: [registradoPor], references: [id])
 
   @@index([pacienteId])
+}
+
+// RNF-08: trazabilidad de quien vio el diagnostico confidencial de cada
+// paciente y cuando. Se crea un registro cada vez que GET /expedientes/paciente/:id
+// responde con exito (Administrador directo, o con token temporal).
+model AccesoDiagnostico {
+  id         Int      @id @default(autoincrement())
+  pacienteId Int
+  usuarioId  Int
+  viaToken   Boolean  @default(false) // false = acceso directo del Administrador (RF-11)
+  tokenId    Int?
+  fecha      DateTime @default(now())
+
+  paciente Paciente       @relation(fields: [pacienteId], references: [id])
+  usuario  Usuario        @relation("AccesoDiagnosticoUsuario", fields: [usuarioId], references: [id])
+  token    TokenTemporal? @relation(fields: [tokenId], references: [id])
+
+  @@index([pacienteId])
+  @@index([usuarioId])
+  @@index([fecha])
 }
 
 // Modulo 3: Tratamiento y Medicamentos Intrahospitalarios
