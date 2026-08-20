@@ -134,13 +134,15 @@ model Diagnostico {
   @@index([pacienteId])
 }
 
-// RNF-08: trazabilidad de quien vio el diagnostico confidencial de cada
-// paciente y cuando. Se crea un registro cada vez que GET /expedientes/paciente/:id
-// responde con exito (Administrador directo, o con token temporal).
+// RNF-08: trazabilidad de quien vio o registro el diagnostico confidencial
+// de cada paciente y cuando. Se crea un registro cada vez que GET o POST
+// /expedientes/paciente/:id responde con exito (Administrador directo, o
+// con token temporal).
 model AccesoDiagnostico {
   id         Int      @id @default(autoincrement())
   pacienteId Int
   usuarioId  Int
+  accion     String   @default("ver") // "ver" | "registrar" (nuevo registro/edicion del diagnostico)
   viaToken   Boolean  @default(false) // false = acceso directo del Administrador (RF-11)
   tokenId    Int?
   fecha      DateTime @default(now())

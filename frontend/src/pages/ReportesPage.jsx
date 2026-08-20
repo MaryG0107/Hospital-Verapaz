@@ -126,7 +126,7 @@ export function ReportesPage() {
               style={{ maxWidth: 360, marginBottom: 12 }}
             />
             <Table
-              headers={["Usuario", "Rol", "Paciente", "Tipo de acceso", "Fecha"]}
+              headers={["Usuario", "Rol", "Paciente", "Acción", "Tipo de acceso", "Fecha"]}
               rows={cargandoAuditoria ? [] : auditoria || []}
               emptyMessage={cargandoAuditoria ? "Cargando…" : "Sin accesos registrados."}
               renderRow={(a) => (
@@ -134,6 +134,18 @@ export function ReportesPage() {
                   <td className="px-4 py-3 font-semibold">{a.usuario?.nombre}</td>
                   <td className="px-4 py-3" style={{ color: "#666" }}>{a.usuario?.rol}</td>
                   <td className="px-4 py-3">{a.paciente?.nombreCompleto} <span style={{ color: "#999" }}>({a.paciente?.historiaClinica})</span></td>
+                  <td className="px-4 py-3">
+                    <span
+                      className="text-xs font-semibold px-2 py-1 rounded-full"
+                      style={
+                        a.accion === "registrar"
+                          ? { backgroundColor: "#FBF2E1", color: COLORS.gold }
+                          : { backgroundColor: "#EEF1FB", color: COLORS.navy }
+                      }
+                    >
+                      {a.accion === "registrar" ? "Registro / edición" : "Visualización"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-semibold" style={{ color: a.viaToken ? COLORS.gold : COLORS.navy }}>
                     {a.viaToken ? "Con token temporal" : "Administrador (directo)"}
                   </td>

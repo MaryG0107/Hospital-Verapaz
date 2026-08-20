@@ -37,6 +37,7 @@ export async function obtenerUno(req, res) {
     data: {
       pacienteId: diagnostico.pacienteId,
       usuarioId: req.user.id,
+      accion: "ver",
       viaToken: req.user.rol !== ROLES.ADMIN,
       tokenId: req.tempToken?.id ?? null,
     },
@@ -63,6 +64,17 @@ export async function crear(req, res) {
   const { encrypted, iv, authTag } = encrypt(texto, KEY);
   const diagnostico = await prisma.diagnostico.create({
     data: { pacienteId, textoCifrado: encrypted, iv, authTag, codigoCie, registradoPor: req.user.id },
+  });
+
+  // RNF-08: deja constancia de quien registro/edito el diagnostico y cuando
+  await prisma.accesoDiagnostico.create({
+    data: {
+      pacienteId,
+      usuarioId: req.user.id,
+      accion: "registrar",
+      viaToken: req.user.rol !== ROLES.ADMIN,
+      tokenId: req.tempToken?.id ?? null,
+    },
   });
 
   res.status(201).json({ ok: true, id: diagnostico.id, pacienteId, codigoCie, creadoEn: diagnostico.creadoEn });
