@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { Card } from "../components/Card";
 import { Table } from "../components/Table";
+import { Button } from "../components/Button";
+import { TextInput } from "../components/FormField";
 import { useFetch } from "../hooks/useFetch";
 import { useAuth } from "../context/AuthContext";
 import { COLORS } from "../styles/tokens";
@@ -25,7 +28,20 @@ export function ReportesPage() {
   const { data: admisiones } = useFetch("/reportes/admisiones");
   const { data: porFormaPago } = useFetch("/reportes/facturacion-por-forma-pago");
   const { data: kardex } = useFetch("/reportes/inventario-kardex");
-  const { data: auditoria } = useFetch("/reportes/auditoria-diagnostico");
+
+  const [mostrarAuditoria, setMostrarAuditoria] = useState(false);
+  const [buscarInput, setBuscarInput] = useState("");
+  const [buscarAuditoria, setBuscarAuditoria] = useState("");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setBuscarAuditoria(buscarInput), 300);
+    return () => clearTimeout(timeout);
+  }, [buscarInput]);
+
+  const { data: auditoria, loading: cargandoAuditoria } = useFetch(
+    `/reportes/auditoria-diagnostico${buscarAuditoria ? `?buscar=${encodeURIComponent(buscarAuditoria)}` : ""}`,
+    { enabled: mostrarAuditoria }
+  );
 
   return (
     <div>
@@ -86,26 +102,47 @@ export function ReportesPage() {
       </Card>
 
       <Card>
-        <div className="font-semibold text-sm mb-1">Auditoría de accesos al diagnóstico confidencial (RNF-08)</div>
-        <p className="text-xs mb-3" style={{ color: "#888" }}>
-          Quién vio el diagnóstico de cada paciente, cuándo, y si fue como Administrador (acceso directo) o con un token temporal.
-        </p>
-        <Table
-          headers={["Usuario", "Rol", "Paciente", "Tipo de acceso", "Fecha"]}
-          rows={auditoria || []}
-          emptyMessage="Sin accesos registrados."
-          renderRow={(a) => (
-            <>
-              <td className="px-4 py-3 font-semibold">{a.usuario?.nombre}</td>
-              <td className="px-4 py-3" style={{ color: "#666" }}>{a.usuario?.rol}</td>
-              <td className="px-4 py-3">{a.paciente?.nombreCompleto} <span style={{ color: "#999" }}>({a.paciente?.historiaClinica})</span></td>
-              <td className="px-4 py-3 font-semibold" style={{ color: a.viaToken ? COLORS.gold : COLORS.navy }}>
-                {a.viaToken ? "Con token temporal" : "Administrador (directo)"}
-              </td>
-              <td className="px-4 py-3" style={{ color: "#666" }}>{new Date(a.fecha).toLocaleString()}</td>
-            </>
-          )}
-        />
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-semibold text-sm mb-1">Auditoría de accesos al diagnóstico confidencial (RNF-08)</div>
+            <p className="text-xs" style={{ color: "#888" }}>
+              Quién vio el diagnóstico de cada paciente, cuándo, y si fue como Administrador (acceso directo) o con un token temporal.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => setMostrarAuditoria((v) => !v)}>
+            <span className="flex items-center gap-1.5">
+              {mostrarAuditoria ? <EyeOff size={15} /> : <Eye size={15} />}
+              {mostrarAuditoria ? "Ocultar auditoría" : "Ver auditoría"}
+            </span>
+          </Button>
+        </div>
+
+        {mostrarAuditoria && (
+          <div className="mt-4 animate-fade-in">
+            <TextInput
+              placeholder="Buscar por usuario, paciente o historia clínica…"
+              value={buscarInput}
+              onChange={(e) => setBuscarInput(e.target.value)}
+              style={{ maxWidth: 360, marginBottom: 12 }}
+            />
+            <Table
+              headers={["Usuario", "Rol", "Paciente", "Tipo de acceso", "Fecha"]}
+              rows={cargandoAuditoria ? [] : auditoria || []}
+              emptyMessage={cargandoAuditoria ? "Cargando…" : "Sin accesos registrados."}
+              renderRow={(a) => (
+                <>
+                  <td className="px-4 py-3 font-semibold">{a.usuario?.nombre}</td>
+                  <td className="px-4 py-3" style={{ color: "#666" }}>{a.usuario?.rol}</td>
+                  <td className="px-4 py-3">{a.paciente?.nombreCompleto} <span style={{ color: "#999" }}>({a.paciente?.historiaClinica})</span></td>
+                  <td className="px-4 py-3 font-semibold" style={{ color: a.viaToken ? COLORS.gold : COLORS.navy }}>
+                    {a.viaToken ? "Con token temporal" : "Administrador (directo)"}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: "#666" }}>{new Date(a.fecha).toLocaleString()}</td>
+                </>
+              )}
+            />
+          </div>
+        )}
       </Card>
     </div>
   );

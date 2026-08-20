@@ -63,13 +63,24 @@ export async function inventarioKardex(req, res) {
   res.json(movimientos);
 }
 
-// RNF-08: quien vio el diagnostico confidencial de cada paciente y cuando
+// RNF-08: quien vio el diagnostico confidencial de cada paciente y cuando.
+// "buscar" filtra por nombre de usuario o del paciente/historia clinica,
+// para no tener que revisar registro por registro si hay mucho volumen.
 export async function auditoriaDiagnostico(req, res) {
-  const { pacienteId, desde, hasta } = req.query;
+  const { pacienteId, desde, hasta, buscar } = req.query;
   const accesos = await prisma.accesoDiagnostico.findMany({
     where: {
       pacienteId: pacienteId ? Number(pacienteId) : undefined,
       fecha: rangoFecha(desde, hasta),
+      ...(buscar
+        ? {
+            OR: [
+              { usuario: { nombre: { contains: buscar, mode: "insensitive" } } },
+              { paciente: { nombreCompleto: { contains: buscar, mode: "insensitive" } } },
+              { paciente: { historiaClinica: { contains: buscar, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
     },
     orderBy: { fecha: "desc" },
     take: 200,
