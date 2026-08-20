@@ -3,9 +3,10 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../config/prisma.js";
 import { ROLES_VALIDOS } from "../utils/roles.util.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 const SELECT_PUBLICO = {
-  id: true, nombre: true, correo: true, rol: true, puedeAutogenerarToken: true, creadoEn: true,
+  id: true, nombre: true, correo: true, rol: true, puedeAutogenerarToken: true, ultimaActividad: true, creadoEn: true,
 };
 
 export async function listar(req, res) {
@@ -33,6 +34,7 @@ export async function crear(req, res) {
     data: { nombre, correo, passwordHash, rol, puedeAutogenerarToken: !!puedeAutogenerarToken },
     select: SELECT_PUBLICO,
   });
+  await registrarActividad(req.user.id, "crear_usuario", `${usuario.nombre} (${usuario.rol})`);
   res.status(201).json(usuario);
 }
 
@@ -49,6 +51,7 @@ export async function actualizar(req, res) {
       data: { nombre, rol, puedeAutogenerarToken },
       select: SELECT_PUBLICO,
     });
+    await registrarActividad(req.user.id, "actualizar_usuario", `${usuario.nombre} → rol: ${usuario.rol}, autogenera token: ${usuario.puedeAutogenerarToken}`);
     res.json(usuario);
   } catch (err) {
     if (err.code === "P2025") return res.status(404).json({ error: "Usuario no encontrado" });

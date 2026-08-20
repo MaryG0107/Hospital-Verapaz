@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Card } from "../components/Card";
 import { Table } from "../components/Table";
@@ -10,6 +10,17 @@ import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { COLORS } from "../styles/tokens";
 import { ROLES, ROLE_LABELS } from "../utils/roles";
+
+const MINUTOS_EN_LINEA = 5;
+
+function estadoConexion(ultimaActividad) {
+  if (!ultimaActividad) return { enLinea: false, texto: "Nunca ha entrado" };
+  const minutos = (Date.now() - new Date(ultimaActividad).getTime()) / 60000;
+  if (minutos <= MINUTOS_EN_LINEA) return { enLinea: true, texto: "En línea" };
+  if (minutos < 60) return { enLinea: false, texto: `Hace ${Math.round(minutos)} min` };
+  if (minutos < 1440) return { enLinea: false, texto: `Hace ${Math.round(minutos / 60)} h` };
+  return { enLinea: false, texto: new Date(ultimaActividad).toLocaleDateString() };
+}
 
 export function SeguridadPage() {
   const { usuario } = useAuth();
@@ -42,6 +53,12 @@ function SeguridadAdmin() {
   const [tokenForm, setTokenForm] = useState({ usuarioId: "" });
   const [tokenResultado, setTokenResultado] = useState(null);
   const [emitiendoToken, setEmitiendoToken] = useState(false);
+
+  // Refresca el estado "en linea" periodicamente sin que el Administrador tenga que recargar la pagina
+  useEffect(() => {
+    const intervalo = setInterval(reload, 30000);
+    return () => clearInterval(intervalo);
+  }, [reload]);
 
   async function crearUsuario(e) {
     e.preventDefault();
@@ -89,27 +106,35 @@ function SeguridadAdmin() {
       {error && <Banner tone="error">{error}</Banner>}
 
       <Table
-        headers={["Usuario", "Correo", "Rol", "Autogenera token", ""]}
+        headers={["Usuario", "Correo", "Rol", "Autogenera token", "Estado"]}
         rows={loading ? [] : usuarios || []}
         emptyMessage={loading ? "Cargando…" : "Sin usuarios registrados."}
-        renderRow={(u) => (
-          <>
-            <td className="px-4 py-3 font-semibold">{u.nombre}</td>
-            <td className="px-4 py-3" style={{ color: "#666" }}>{u.correo}</td>
-            <td className="px-4 py-3">
-              <Select value={u.rol} onChange={(e) => actualizarUsuario(u.id, { rol: e.target.value })} style={{ margin: 0, width: "auto" }}>
-                {Object.values(ROLES).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </Select>
-            </td>
-            <td className="px-4 py-3">
-              <label className="flex items-center gap-2 text-xs" style={{ color: "#666" }}>
-                <input type="checkbox" checked={u.puedeAutogenerarToken} onChange={(e) => actualizarUsuario(u.id, { puedeAutogenerarToken: e.target.checked })} />
-                RF-34
-              </label>
-            </td>
-            <td className="px-4 py-3" />
-          </>
-        )}
+        renderRow={(u) => {
+          const estado = estadoConexion(u.ultimaActividad);
+          return (
+            <>
+              <td className="px-4 py-3 font-semibold">{u.nombre}</td>
+              <td className="px-4 py-3" style={{ color: "#666" }}>{u.correo}</td>
+              <td className="px-4 py-3">
+                <Select value={u.rol} onChange={(e) => actualizarUsuario(u.id, { rol: e.target.value })} style={{ margin: 0, width: "auto" }}>
+                  {Object.values(ROLES).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </Select>
+              </td>
+              <td className="px-4 py-3">
+                <label className="flex items-center gap-2 text-xs" style={{ color: "#666" }}>
+                  <input type="checkbox" checked={u.puedeAutogenerarToken} onChange={(e) => actualizarUsuario(u.id, { puedeAutogenerarToken: e.target.checked })} />
+                  RF-34
+                </label>
+              </td>
+              <td className="px-4 py-3">
+                <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: estado.enLinea ? COLORS.green : "#888" }}>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: estado.enLinea ? COLORS.green : "#C4C9D4" }} />
+                  {estado.texto}
+                </span>
+              </td>
+            </>
+          );
+        }}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">

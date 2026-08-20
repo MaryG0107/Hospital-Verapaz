@@ -1,6 +1,7 @@
 // Controlador: Farmacia - inventario y ventas (Modulo 6)
 import { prisma } from "../config/prisma.js";
 import { registrarVentaFarmacia } from "../services/facturacion.service.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 const DIAS_ALERTA_VENCIMIENTO = 60;
 
@@ -39,6 +40,7 @@ export async function crear(req, res) {
       fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : null,
     },
   });
+  await registrarActividad(req.user.id, "crear_medicamento", medicamento.nombre);
   res.status(201).json(medicamento);
 }
 
@@ -75,6 +77,7 @@ export async function registrarEntrada(req, res) {
         data: { medicamentoId, tipo: "entrada", cantidad, motivo: motivo || "compra" },
       }),
     ]);
+    await registrarActividad(req.user.id, "entrada_inventario", `${medicamento.nombre} +${cantidad}`);
     res.status(201).json(medicamento);
   } catch (err) {
     if (err.code === "P2025") return res.status(404).json({ error: "Medicamento no encontrado" });
@@ -111,6 +114,7 @@ export async function registrarSalida(req, res) {
       },
     }),
   ]);
+  await registrarActividad(req.user.id, "salida_uso_intrahospitalario", `${medicamento.nombre} x${cantidad}`);
   res.status(201).json({ ok: true, tratamiento });
 }
 
@@ -133,6 +137,7 @@ export async function registrarVenta(req, res) {
       items: items.map((i) => ({ medicamentoId: Number(i.medicamentoId), cantidad: Number(i.cantidad) })),
       registradoPor: req.user.id,
     });
+    await registrarActividad(req.user.id, "venta_farmacia", `Factura #${factura.id} por Q${Number(factura.montoTotal).toFixed(2)}`);
     res.status(201).json(factura);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });

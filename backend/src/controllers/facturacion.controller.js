@@ -1,6 +1,7 @@
 // Controlador: Area Financiera (Modulo 5 - Facturacion Hospital)
 import { prisma } from "../config/prisma.js";
 import { generarFacturaHospital, reporteConsolidado } from "../services/facturacion.service.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 export async function listar(req, res) {
   const facturas = await prisma.facturaHospital.findMany({
@@ -36,6 +37,7 @@ export async function crear(req, res) {
       costoHospital: Number(costoHospital),
       formaPago,
     });
+    await registrarActividad(req.user.id, "generar_factura_hospital", `Factura #${factura.id} por Q${Number(factura.total).toFixed(2)}`);
     res.status(201).json(factura);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });

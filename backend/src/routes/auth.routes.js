@@ -7,6 +7,7 @@ import { ROLES } from "../utils/roles.util.js";
 const router = Router();
 
 router.post("/login", controller.login);
+router.post("/logout", requireAuth, controller.logout);
 router.post("/token", requireAuth, requireRole(ROLES.ADMIN), controller.solicitarTokenTemporal); // RF-33
 router.post("/token/auto", requireAuth, controller.autogenerarTokenTemporal); // RF-34
 

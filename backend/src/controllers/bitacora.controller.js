@@ -1,5 +1,6 @@
 // Controlador: Bitacora de Visitas (Modulo 7)
 import { prisma } from "../config/prisma.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 // RF-28: listar visitas, opcionalmente filtradas por paciente
 export async function listar(req, res) {
@@ -31,6 +32,7 @@ export async function crear(req, res) {
   const visita = await prisma.bitacoraVisita.create({
     data: { pacienteId: Number(pacienteId), descripcion, autorId: req.user.id },
   });
+  await registrarActividad(req.user.id, "registrar_visita", descripcion);
   res.status(201).json(visita);
 }
 

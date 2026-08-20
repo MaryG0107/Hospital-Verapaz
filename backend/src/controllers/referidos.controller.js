@@ -1,5 +1,6 @@
 // Controlador: Clientes Referidos (Modulo 4)
 import { prisma } from "../config/prisma.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 // RF-16: listar medicos referentes, con total de pacientes referidos
 export async function listar(req, res) {
@@ -26,6 +27,7 @@ export async function crear(req, res) {
     return res.status(400).json({ error: "nombre y comisionQ son requeridos" });
   }
   const medico = await prisma.medicoReferente.create({ data: { nombre, especialidad, comisionQ } });
+  await registrarActividad(req.user.id, "crear_referido", nombre);
   res.status(201).json(medico);
 }
 

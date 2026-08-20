@@ -19,6 +19,7 @@ model Usuario {
   passwordHash          String
   rol                   String   // Administrador, Recepcion, Consulta, Enfermeria, Facturacion, Farmacia
   puedeAutogenerarToken Boolean  @default(false) // RF-34
+  ultimaActividad       DateTime? // se actualiza en cada peticion autenticada, para saber quien esta "en linea"
   creadoEn              DateTime @default(now())
 
   tokensRecibidos  TokenTemporal[] @relation("TokenUsuario")
@@ -28,8 +29,27 @@ model Usuario {
   visitasRegistradas BitacoraVisita[] @relation("BitacoraAutor")
   facturasFarmacia FacturaFarmacia[] @relation("FacturaFarmaciaRegistradoPor")
   accesosDiagnostico AccesoDiagnostico[] @relation("AccesoDiagnosticoUsuario")
+  logs             LogActividad[]  @relation("LogActividadUsuario")
 
   @@index([rol])
+}
+
+// Bitacora general del sistema: login/logout y cada accion de crear o
+// modificar algo, en cualquier modulo. No reemplaza a AccesoDiagnostico
+// (ese es especifico para el diagnostico confidencial, RNF-08); esta es
+// la traza general de "quien hizo que y cuando".
+model LogActividad {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int?
+  accion    String   // "login" | "logout" | "crear_paciente" | "generar_factura_hospital" | ...
+  detalle   String?  // contexto legible, ej. "Paciente HC-2026-000002"
+  fecha     DateTime @default(now())
+
+  usuario Usuario? @relation("LogActividadUsuario", fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@index([fecha])
+  @@index([accion])
 }
 
 model TokenTemporal {

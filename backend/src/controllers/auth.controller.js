@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "../config/prisma.js";
 import { ROLES } from "../utils/roles.util.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 function firmarSesion(usuario) {
   return jwt.sign(
@@ -26,6 +27,9 @@ export async function login(req, res) {
   const passwordValida = await bcrypt.compare(password, usuario.passwordHash);
   if (!passwordValida) return res.status(401).json({ error: "Credenciales invalidas" });
 
+  await prisma.usuario.update({ where: { id: usuario.id }, data: { ultimaActividad: new Date() } });
+  await registrarActividad(usuario.id, "login", `${usuario.nombre} inició sesión`);
+
   res.json({
     token: firmarSesion(usuario),
     usuario: {
@@ -36,6 +40,14 @@ export async function login(req, res) {
       puedeAutogenerarToken: usuario.puedeAutogenerarToken,
     },
   });
+}
+
+// Registra la hora de salida. El JWT sigue siendo valido hasta que expire
+// (no hay lista de revocacion), pero queda constancia de cuando el usuario
+// decidio cerrar sesion.
+export async function logout(req, res) {
+  await registrarActividad(req.user.id, "logout", "Cierre de sesión");
+  res.json({ ok: true });
 }
 
 async function emitirToken({ usuarioId, pacienteId, emitidoPor }) {

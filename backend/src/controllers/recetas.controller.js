@@ -1,5 +1,6 @@
 // Controlador: Recetas medicas (parte del Modulo 3 - Tratamiento y Medicamentos)
 import { prisma } from "../config/prisma.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 export async function listar(req, res) {
   const { pacienteId } = req.query;
@@ -44,5 +45,6 @@ export async function crear(req, res) {
       duracion: duracion || "",
     },
   });
+  await registrarActividad(req.user.id, "crear_receta", medicamento);
   res.status(201).json(receta);
 }

@@ -19,7 +19,12 @@ export function AuthProvider({ children }) {
     setUsuario(data.usuario);
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await api.post("/auth/logout", {});
+    } catch {
+      // si el token ya expiro o la peticion falla, igual cerramos sesion localmente
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
     setUsuario(null);

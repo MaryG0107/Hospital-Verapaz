@@ -1,5 +1,6 @@
 // Controlador: Registro y Admision (Modulo 1)
 import { prisma } from "../config/prisma.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 const CAMPOS_PACIENTE = [
   "nombreCompleto", "dpi", "direccion", "lugarNacimiento", "fechaNacimiento",
@@ -81,6 +82,7 @@ export async function crear(req, res) {
     });
   });
 
+  await registrarActividad(req.user.id, "crear_paciente", `${paciente.nombreCompleto} (${paciente.historiaClinica})`);
   res.status(201).json(paciente);
 }
 
@@ -89,6 +91,7 @@ export async function actualizar(req, res) {
   const id = Number(req.params.id);
   try {
     const paciente = await prisma.paciente.update({ where: { id }, data: tomarCampos(req.body) });
+    await registrarActividad(req.user.id, "actualizar_paciente", `${paciente.nombreCompleto} (${paciente.historiaClinica})`);
 
     if (req.body.maternidad) {
       const m = req.body.maternidad;

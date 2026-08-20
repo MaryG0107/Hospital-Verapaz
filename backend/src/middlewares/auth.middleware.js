@@ -10,6 +10,8 @@ export function requireAuth(req, res, next) {
   try {
     const token = header.replace("Bearer ", "");
     req.user = jwt.verify(token, process.env.JWT_SECRET);
+    // "en linea": se actualiza sin bloquear la respuesta ni interrumpirla si falla
+    prisma.usuario.update({ where: { id: req.user.id }, data: { ultimaActividad: new Date() } }).catch(() => {});
     next();
   } catch (err) {
     res.status(401).json({ error: "Token invalido o expirado" });

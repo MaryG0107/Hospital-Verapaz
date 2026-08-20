@@ -1,5 +1,6 @@
 // Controlador: Tratamiento y Medicamentos Intrahospitalarios (Modulo 3)
 import { prisma } from "../config/prisma.js";
+import { registrarActividad } from "../services/actividad.service.js";
 
 // RF-13: listar los medicamentos/procedimientos de un paciente
 export async function listar(req, res) {
@@ -31,6 +32,7 @@ export async function crear(req, res) {
   const item = await prisma.tratamientoItem.create({
     data: { pacienteId: Number(pacienteId), descripcion, dosis, costo, origen },
   });
+  await registrarActividad(req.user.id, "registrar_tratamiento", descripcion);
   res.status(201).json(item);
 }
 
