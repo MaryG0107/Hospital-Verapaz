@@ -142,7 +142,7 @@ export function ExpedientePage({ pacienteIdInicial }) {
           <p className="text-xs mb-3" style={{ color: "#888" }}>
             Código CIE: {diagnostico.codigoCie || "—"} · Registrado: {new Date(diagnostico.creadoEn).toLocaleString()}
           </p>
-          <div className="rounded-md p-3 text-sm" style={{ backgroundColor: "#FAFAFB", border: `1px solid ${COLORS.border}` }}>
+          <div className="rounded-xl p-3 text-sm" style={{ backgroundColor: "#FAFAFB", border: `1px solid ${COLORS.border}` }}>
             {diagnostico.diagnostico}
           </div>
         </Card>

@@ -112,7 +112,7 @@ function SeguridadAdmin() {
         )}
       />
 
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <Card>
           <div className="font-semibold text-sm mb-3">+ Nuevo usuario</div>
           <form onSubmit={crearUsuario} className="flex flex-col gap-4">
@@ -151,7 +151,7 @@ function SeguridadAdmin() {
             </div>
           </form>
           {tokenResultado && (
-            <div className="rounded-md p-3 text-sm mt-3" style={{ backgroundColor: "#FAFAFB", border: `1px solid ${COLORS.border}` }}>
+            <div className="rounded-xl p-3 text-sm mt-3" style={{ backgroundColor: "#FAFAFB", border: `1px solid ${COLORS.border}` }}>
               <div className="font-mono text-xs break-all">{tokenResultado.token}</div>
               <div className="text-xs mt-1" style={{ color: "#888" }}>Expira: {new Date(tokenResultado.expiraEn).toLocaleString()}</div>
             </div>

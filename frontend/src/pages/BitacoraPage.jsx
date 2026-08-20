@@ -62,10 +62,12 @@ export function BitacoraPage({ pacienteIdInicial }) {
           <div className="text-sm" style={{ color: "#888" }}>Sin visitas registradas para este paciente.</div>
         ) : (
           visitas.map((v, i) => (
-            <div key={v.id} className="flex gap-4 py-3" style={i > 0 ? { borderTop: `1px solid ${COLORS.border}` } : {}}>
-              <span className="w-2.5 h-2.5 rounded-full mt-1" style={{ backgroundColor: COLORS.gold, flexShrink: 0 }} />
-              <div style={{ width: 180, flexShrink: 0, color: "#888" }} className="text-xs font-semibold">{new Date(v.fecha).toLocaleString()}</div>
-              <div>
+            <div key={v.id} className="flex flex-col sm:flex-row gap-1 sm:gap-4 py-3" style={i > 0 ? { borderTop: `1px solid ${COLORS.border}` } : {}}>
+              <div className="flex items-center gap-2 sm:contents">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS.gold }} />
+                <div style={{ color: "#888" }} className="text-xs font-semibold sm:w-44 sm:shrink-0">{new Date(v.fecha).toLocaleString()}</div>
+              </div>
+              <div className="pl-5 sm:pl-0">
                 <div className="text-sm font-semibold">{v.autor?.nombre} — {v.autor?.rol}</div>
                 <div className="text-xs mt-0.5" style={{ color: "#888" }}>{v.descripcion}</div>
               </div>

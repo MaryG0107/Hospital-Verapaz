@@ -66,12 +66,12 @@ export function Combobox({ options, value, onChange, placeholder }) {
           setAbierto(true);
           if (e.target.value === "") onChange("");
         }}
-        className="w-full mt-1 px-3 py-2 rounded-md text-sm border"
-        style={{ borderColor: COLORS.border }}
+        className="w-full mt-1.5 px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-all duration-150 focus:border-navy focus:ring-2"
+        style={{ borderColor: COLORS.border, "--tw-ring-color": "rgba(31, 56, 100, 0.18)" }}
       />
       {abierto && (
         <div
-          className="mt-1 rounded-md shadow-lg overflow-y-auto"
+          className="mt-1.5 rounded-xl shadow-lifted overflow-y-auto animate-fade-in"
           style={{ position: "absolute", zIndex: 20, width: "100%", maxHeight: 260, backgroundColor: "white", border: `1px solid ${COLORS.border}` }}
         >
           {filtradas.length === 0 ? (

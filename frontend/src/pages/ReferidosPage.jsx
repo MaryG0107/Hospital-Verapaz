@@ -57,11 +57,11 @@ export function ReferidosPage() {
         <Card style={{ marginTop: 16 }}>
           <div className="font-semibold text-sm mb-3">+ Registrar médico referente</div>
           {mensaje && <Banner tone={mensaje.tone}>{mensaje.texto}</Banner>}
-          <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4 items-end">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <FormField label="Nombre"><TextInput required value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} /></FormField>
             <FormField label="Especialidad"><TextInput value={form.especialidad} onChange={(e) => setForm((f) => ({ ...f, especialidad: e.target.value }))} /></FormField>
             <FormField label="Comisión (Q por paciente)"><TextInput type="number" step="0.01" min="0" required value={form.comisionQ} onChange={(e) => setForm((f) => ({ ...f, comisionQ: e.target.value }))} /></FormField>
-            <div className="col-span-3">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-3">
               <Button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Registrar"}</Button>
             </div>
           </form>

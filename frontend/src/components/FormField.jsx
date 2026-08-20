@@ -4,27 +4,48 @@ import { COLORS } from "../styles/tokens";
 export function FormField({ label, children }) {
   return (
     <div>
-      <label className="text-xs font-semibold" style={{ color: "#444" }}>{label}</label>
+      <label className="text-xs font-semibold" style={{ color: "#475066" }}>{label}</label>
       {children}
     </div>
   );
 }
 
-const inputClass = "w-full mt-1 px-3 py-2 rounded-md text-sm border";
-const inputStyle = { borderColor: COLORS.border };
+const baseClass =
+  "w-full mt-1.5 px-3.5 py-2.5 rounded-xl text-sm border transition-all duration-150 outline-none " +
+  "focus:ring-2 focus:ring-offset-0";
+const baseStyle = { borderColor: COLORS.border, color: COLORS.text };
+
+// El focus ring usa el navy del hospital via CSS var, para no depender del theme de Tailwind
+const focusVars = { "--tw-ring-color": "rgba(31, 56, 100, 0.18)" };
 
 export function TextInput(props) {
-  return <input {...props} className={inputClass + " " + (props.className || "")} style={{ ...inputStyle, ...props.style }} />;
+  return (
+    <input
+      {...props}
+      className={baseClass + " focus:border-navy " + (props.className || "")}
+      style={{ ...baseStyle, ...focusVars, ...props.style }}
+    />
+  );
 }
 
 export function Select({ children, ...props }) {
   return (
-    <select {...props} className={inputClass + " " + (props.className || "")} style={{ ...inputStyle, ...props.style }}>
+    <select
+      {...props}
+      className={baseClass + " focus:border-navy bg-white " + (props.className || "")}
+      style={{ ...baseStyle, ...focusVars, ...props.style }}
+    >
       {children}
     </select>
   );
 }
 
 export function TextArea(props) {
-  return <textarea {...props} className={inputClass + " " + (props.className || "")} style={{ ...inputStyle, ...props.style }} />;
+  return (
+    <textarea
+      {...props}
+      className={baseClass + " focus:border-navy " + (props.className || "")}
+      style={{ ...baseStyle, ...focusVars, ...props.style }}
+    />
+  );
 }

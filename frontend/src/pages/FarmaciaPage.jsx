@@ -109,7 +109,7 @@ export function FarmaciaPage() {
           <Card style={{ marginTop: 16 }}>
             <div className="font-semibold text-sm mb-3">Registrar entrada / salida (kardex — RNF-10)</div>
             {mensaje && <Banner tone={mensaje.tone}>{mensaje.texto}</Banner>}
-            <form onSubmit={registrarMovimiento} className="grid grid-cols-4 gap-4 items-end">
+            <form onSubmit={registrarMovimiento} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               <FormField label="Medicamento">
                 <Select required value={mov.medicamentoId} onChange={(e) => setMov((m) => ({ ...m, medicamentoId: e.target.value }))}>
                   {(medicamentos || []).map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
@@ -138,7 +138,7 @@ export function FarmaciaPage() {
                   </Select>
                 </FormField>
               )}
-              <div className="col-span-4">
+              <div className="col-span-1 sm:col-span-2 lg:col-span-4">
                 <Button type="submit" disabled={guardando}>{guardando ? "Registrando…" : "Registrar movimiento"}</Button>
               </div>
             </form>
@@ -146,7 +146,7 @@ export function FarmaciaPage() {
 
           <Card style={{ marginTop: 16 }}>
             <div className="font-semibold text-sm mb-3">+ Nuevo medicamento (RF-22)</div>
-            <form onSubmit={crearMedicamento} className="grid grid-cols-4 gap-4 items-end">
+            <form onSubmit={crearMedicamento} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               <FormField label="Nombre"><TextInput required value={nuevoMed.nombre} onChange={(e) => setNuevoMed((f) => ({ ...f, nombre: e.target.value }))} /></FormField>
               <FormField label="Tipo"><TextInput value={nuevoMed.tipo} onChange={(e) => setNuevoMed((f) => ({ ...f, tipo: e.target.value }))} /></FormField>
               <FormField label="Presentación"><TextInput value={nuevoMed.presentacion} onChange={(e) => setNuevoMed((f) => ({ ...f, presentacion: e.target.value }))} /></FormField>
@@ -155,7 +155,7 @@ export function FarmaciaPage() {
               <FormField label="Stock mínimo"><TextInput type="number" min="0" value={nuevoMed.stockMinimo} onChange={(e) => setNuevoMed((f) => ({ ...f, stockMinimo: e.target.value }))} /></FormField>
               <FormField label="Precio de venta (Q)"><TextInput type="number" step="0.01" min="0" value={nuevoMed.precioVenta} onChange={(e) => setNuevoMed((f) => ({ ...f, precioVenta: e.target.value }))} /></FormField>
               <FormField label="Fecha de vencimiento"><TextInput type="date" value={nuevoMed.fechaVencimiento} onChange={(e) => setNuevoMed((f) => ({ ...f, fechaVencimiento: e.target.value }))} /></FormField>
-              <div className="col-span-4">
+              <div className="col-span-1 sm:col-span-2 lg:col-span-4">
                 <Button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Agregar medicamento"}</Button>
               </div>
             </form>

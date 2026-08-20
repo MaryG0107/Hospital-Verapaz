@@ -56,7 +56,7 @@ export function FinancieraPage() {
   return (
     <div>
       <PageHeader title="Área Financiera" subtitle="Reporte consolidado: ingresos del hospital y de farmacia, por separado y en conjunto (RF-21)" />
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         {stats.map((s) => (
           <Card key={s.label}>
             <div className="text-xs font-semibold" style={{ color: "#888" }}>{s.label}</div>
@@ -89,7 +89,7 @@ export function FinancieraPage() {
             El costo de tratamiento intrahospitalario pendiente se suma automáticamente al costo base (RF-17, RF-19).
           </p>
           {mensaje && <Banner tone={mensaje.tone}>{mensaje.texto}</Banner>}
-          <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-4 items-end">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <FormField label="Paciente">
               <Select required value={pacienteId || ""} onChange={(e) => setPacienteId(Number(e.target.value))}>
                 {(pacientes || []).map((p) => (
@@ -104,7 +104,7 @@ export function FinancieraPage() {
                 <option value="transferencia">Transferencia</option>
               </Select>
             </FormField>
-            <div className="col-span-3">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-3">
               <Button type="submit" disabled={guardando}>{guardando ? "Generando…" : "Generar factura"}</Button>
             </div>
           </form>

@@ -30,7 +30,7 @@ export function ReportesPage() {
     <div>
       <PageHeader title="Reportes" subtitle="Reportes administrativos y financieros para apoyar la toma de decisiones (RF-31)" />
 
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         <Card>
           <div className="text-xs font-semibold" style={{ color: "#888" }}>INGRESOS HOSPITAL</div>
           <div className="text-2xl font-bold mt-1" style={{ color: COLORS.navy }}>Q {financiero?.ingresosHospital?.toLocaleString() ?? "—"}</div>
@@ -45,7 +45,7 @@ export function ReportesPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <Card>
           <div className="font-semibold text-sm mb-3">Admisiones por condición de egreso</div>
           <div className="text-sm mb-2" style={{ color: "#666" }}>Total de ingresos: {admisiones?.totalIngresos ?? "—"}</div>
