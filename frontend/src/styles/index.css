@@ -85,3 +85,26 @@ body {
 .animate-heartbeat {
   animation: heartbeat 2.4s ease-in-out infinite;
 }
+
+/* Impresion de facturas/recetas: solo se imprime lo que este dentro de
+   #printable-area (ver components/DocumentoImprimible.jsx). Todo lo demas
+   (sidebar, modal, botones) queda oculto en el papel/PDF. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-area,
+  #printable-area * {
+    visibility: visible;
+  }
+  #printable-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 16px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

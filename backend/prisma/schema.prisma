@@ -26,7 +26,7 @@ model Usuario {
   diagnosticos     Diagnostico[]   @relation("DiagnosticoRegistradoPor")
   recetas          Receta[]        @relation("RecetaMedico")
   visitasRegistradas BitacoraVisita[] @relation("BitacoraAutor")
-  ventasFarmacia   VentaFarmacia[] @relation("VentaRegistradoPor")
+  facturasFarmacia FacturaFarmacia[] @relation("FacturaFarmaciaRegistradoPor")
   accesosDiagnostico AccesoDiagnostico[] @relation("AccesoDiagnosticoUsuario")
 
   @@index([rol])
@@ -100,6 +100,7 @@ model Paciente {
   visitas            BitacoraVisita[]
   tokensTemporales   TokenTemporal[]
   accesosDiagnostico AccesoDiagnostico[]
+  facturasFarmacia   FacturaFarmacia[]
 
   @@index([nombreCompleto])
 }
@@ -217,14 +218,22 @@ model FacturaHospital {
   @@index([creadoEn])
 }
 
+// RF-20/RF-24/RF-27: factura de farmacia (cabecera). Agrupa una o mas
+// ventas de medicamentos en un solo cobro; puede quedar a nombre de un
+// paciente (opcional, solo para su registro/trazabilidad, no se carga al
+// costeo del hospital -- eso es uso intrahospitalario, ver TratamientoItem).
 model FacturaFarmacia {
-  id           Int      @id @default(autoincrement())
-  ventaId      Int      @unique
-  montoTotal   Decimal  @db.Decimal(10, 2)
-  creadoEn     DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  pacienteId    Int?
+  montoTotal    Decimal  @db.Decimal(10, 2)
+  registradoPor Int
+  creadoEn      DateTime @default(now())
 
-  venta VentaFarmacia @relation(fields: [ventaId], references: [id])
+  paciente    Paciente?       @relation(fields: [pacienteId], references: [id])
+  registrador Usuario         @relation("FacturaFarmaciaRegistradoPor", fields: [registradoPor], references: [id])
+  items       VentaFarmacia[]
 
+  @@index([pacienteId])
   @@index([creadoEn])
 }
 
@@ -259,21 +268,23 @@ model MovimientoInventario {
   @@index([medicamentoId])
 }
 
-// RF-20/RF-24/RF-27: venta directa de farmacia, origina factura y movimiento de inventario
+// Linea de detalle de una venta directa de farmacia (un medicamento dentro
+// de una FacturaFarmacia). Cada linea descuenta stock y deja su propio
+// movimiento de inventario.
 model VentaFarmacia {
   id             Int      @id @default(autoincrement())
+  facturaId      Int
   medicamentoId  Int
   cantidad       Int
   precioUnitario Decimal  @db.Decimal(10, 2)
-  total          Decimal  @db.Decimal(10, 2)
-  registradoPor  Int
+  subtotal       Decimal  @db.Decimal(10, 2)
   creadoEn       DateTime @default(now())
 
+  factura     FacturaFarmacia       @relation(fields: [facturaId], references: [id])
   medicamento MedicamentoInventario @relation(fields: [medicamentoId], references: [id])
-  registrador Usuario @relation("VentaRegistradoPor", fields: [registradoPor], references: [id])
-  factura     FacturaFarmacia?
 
   @@index([medicamentoId])
+  @@index([facturaId])
 }
 
 // Modulo 7: Bitacora de Visitas

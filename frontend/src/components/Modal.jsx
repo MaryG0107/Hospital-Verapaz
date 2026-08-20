@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { COLORS } from "../styles/tokens";
 
-export function Modal({ open, onClose, title, icon: Icon, children }) {
+export function Modal({ open, onClose, title, icon: Icon, children, maxWidth = 440, className = "" }) {
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e) {
@@ -18,12 +18,12 @@ export function Modal({ open, onClose, title, icon: Icon, children }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/45 animate-fade-in" onClick={onClose} />
       <div
-        className="relative bg-white rounded-2xl shadow-lifted w-full animate-fade-in-up"
-        style={{ maxWidth: 440 }}
+        className={"relative bg-white rounded-2xl shadow-lifted w-full animate-fade-in-up max-h-[90vh] overflow-y-auto " + className}
+        style={{ maxWidth }}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-start justify-between px-5 pt-5">
+        <div className="no-print flex items-start justify-between px-5 pt-5">
           <div className="flex items-center gap-2.5">
             {Icon && (
               <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#EEF1FB" }}>

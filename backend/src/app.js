@@ -8,6 +8,7 @@ import usuariosRoutes from "./routes/usuarios.routes.js";
 import pacientesRoutes from "./routes/pacientes.routes.js";
 import expedientesRoutes from "./routes/expedientes.routes.js";
 import tratamientosRoutes from "./routes/tratamientos.routes.js";
+import recetasRoutes from "./routes/recetas.routes.js";
 import referidosRoutes from "./routes/referidos.routes.js";
 import facturacionRoutes from "./routes/facturacion.routes.js";
 import farmaciaRoutes from "./routes/farmacia.routes.js";
@@ -25,6 +26,7 @@ app.use("/api/usuarios", usuariosRoutes);       // Modulo 8 - Seguridad y Roles
 app.use("/api/pacientes", pacientesRoutes);     // Modulo 1 - Registro y Admision
 app.use("/api/expedientes", expedientesRoutes); // Modulo 2 - Expediente Clinico
 app.use("/api/tratamientos", tratamientosRoutes); // Modulo 3 - Tratamiento
+app.use("/api/recetas", recetasRoutes);         // Modulo 3 - Recetas medicas
 app.use("/api/referidos", referidosRoutes);     // Modulo 4 - Clientes Referidos
 app.use("/api/facturacion", facturacionRoutes); // Modulo 5 - Area Financiera
 app.use("/api/farmacia", farmaciaRoutes);       // Modulo 6 - Farmacia

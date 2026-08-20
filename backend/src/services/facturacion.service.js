@@ -40,43 +40,56 @@ export async function generarFacturaHospital({ pacienteId, costoHospital, formaP
   });
 }
 
-// RF-20/RF-24/RF-27: una venta directa de farmacia descuenta stock, deja
-// kardex (movimiento) y genera su propia factura, en una sola transaccion.
-export async function registrarVentaFarmacia({ medicamentoId, cantidad, registradoPor }) {
+// RF-20/RF-24/RF-27: una venta directa de farmacia puede incluir varios
+// medicamentos (carrito) y opcionalmente quedar a nombre de un paciente.
+// Descuenta stock, deja kardex (movimiento) por cada linea, y genera UNA
+// sola factura con todo el detalle, en una sola transaccion.
+export async function registrarVentaFarmacia({ pacienteId, items, registradoPor }) {
   return prisma.$transaction(async (tx) => {
-    const medicamento = await tx.medicamentoInventario.findUnique({ where: { id: medicamentoId } });
-    if (!medicamento) {
-      const error = new Error("Medicamento no encontrado");
-      error.status = 404;
-      throw error;
+    let montoTotal = 0;
+    const lineas = [];
+
+    for (const item of items) {
+      const medicamento = await tx.medicamentoInventario.findUnique({ where: { id: item.medicamentoId } });
+      if (!medicamento) {
+        const error = new Error(`Medicamento ${item.medicamentoId} no encontrado`);
+        error.status = 404;
+        throw error;
+      }
+      if (medicamento.stock < item.cantidad) {
+        const error = new Error(`Stock insuficiente para ${medicamento.nombre}`);
+        error.status = 409;
+        throw error;
+      }
+      const precioUnitario = Number(medicamento.precioVenta);
+      const subtotal = precioUnitario * item.cantidad;
+      montoTotal += subtotal;
+      lineas.push({ medicamentoId: item.medicamentoId, cantidad: item.cantidad, precioUnitario, subtotal });
     }
-    if (medicamento.stock < cantidad) {
-      const error = new Error("Stock insuficiente para esta venta");
-      error.status = 409;
-      throw error;
-    }
-
-    const precioUnitario = Number(medicamento.precioVenta);
-    const total = precioUnitario * cantidad;
-
-    const venta = await tx.ventaFarmacia.create({
-      data: { medicamentoId, cantidad, precioUnitario, total, registradoPor },
-    });
-
-    await tx.movimientoInventario.create({
-      data: { medicamentoId, tipo: "salida", cantidad, motivo: "venta directa" },
-    });
-
-    await tx.medicamentoInventario.update({
-      where: { id: medicamentoId },
-      data: { stock: { decrement: cantidad } },
-    });
 
     const factura = await tx.facturaFarmacia.create({
-      data: { ventaId: venta.id, montoTotal: total },
+      data: { pacienteId: pacienteId ?? null, montoTotal, registradoPor },
     });
 
-    return { venta, factura };
+    for (const linea of lineas) {
+      await tx.ventaFarmacia.create({ data: { facturaId: factura.id, ...linea } });
+      await tx.movimientoInventario.create({
+        data: { medicamentoId: linea.medicamentoId, tipo: "salida", cantidad: linea.cantidad, motivo: "venta directa" },
+      });
+      await tx.medicamentoInventario.update({
+        where: { id: linea.medicamentoId },
+        data: { stock: { decrement: linea.cantidad } },
+      });
+    }
+
+    return tx.facturaFarmacia.findUnique({
+      where: { id: factura.id },
+      include: {
+        items: { include: { medicamento: { select: { nombre: true, tipo: true, presentacion: true } } } },
+        paciente: { select: { nombreCompleto: true, historiaClinica: true, dpi: true } },
+        registrador: { select: { nombre: true } },
+      },
+    });
   });
 }
 

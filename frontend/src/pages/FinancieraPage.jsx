@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { Printer } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { Card } from "../components/Card";
 import { Table } from "../components/Table";
 import { Button } from "../components/Button";
 import { Banner } from "../components/Banner";
+import { Modal } from "../components/Modal";
+import { DocumentoImprimible } from "../components/DocumentoImprimible";
 import { FormField, TextInput, Select } from "../components/FormField";
 import { useFetch } from "../hooks/useFetch";
 import { api } from "../services/api";
@@ -18,6 +21,7 @@ export function FinancieraPage() {
   const { data: reporte, reload: reloadReporte } = useFetch("/facturacion/reporte");
   const { data: facturas, loading, error, reload: reloadFacturas } = useFetch("/facturacion");
   const { data: pacientes } = useFetch("/pacientes");
+  const [facturaImprimir, setFacturaImprimir] = useState(null);
 
   const [pacienteId, setPacienteId] = useState(null);
   useEffect(() => {
@@ -67,7 +71,7 @@ export function FinancieraPage() {
 
       {error && <Banner tone="error">{error}</Banner>}
       <Table
-        headers={["Paciente", "Costo hospital", "Costo tratamiento", "Total", "Forma de pago", "Fecha"]}
+        headers={["Paciente", "Costo hospital", "Costo tratamiento", "Total", "Forma de pago", "Fecha", ""]}
         rows={loading ? [] : facturas || []}
         emptyMessage={loading ? "Cargando…" : "Sin facturas registradas."}
         renderRow={(f) => (
@@ -78,6 +82,11 @@ export function FinancieraPage() {
             <td className="px-4 py-3 font-semibold">Q{Number(f.total).toFixed(2)}</td>
             <td className="px-4 py-3" style={{ color: "#666" }}>{f.formaPago === "efectivo" ? "Efectivo" : "Transferencia"}</td>
             <td className="px-4 py-3" style={{ color: "#666" }}>{new Date(f.creadoEn).toLocaleDateString()}</td>
+            <td className="px-4 py-3">
+              <button onClick={() => setFacturaImprimir(f)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: COLORS.navy }}>
+                <Printer size={13} /> Imprimir
+              </button>
+            </td>
           </>
         )}
       />
@@ -110,6 +119,34 @@ export function FinancieraPage() {
           </form>
         </Card>
       )}
+
+      <Modal open={!!facturaImprimir} onClose={() => setFacturaImprimir(null)} title="Factura de hospital" maxWidth={520}>
+        {facturaImprimir && (
+          <DocumentoImprimible
+            titulo="Factura de Hospital"
+            subtitulo={`No. ${facturaImprimir.id} · ${new Date(facturaImprimir.creadoEn).toLocaleString()}`}
+          >
+            <div className="text-sm mb-4">
+              <div><strong>Paciente:</strong> {facturaImprimir.paciente?.nombreCompleto}</div>
+              <div><strong>Historia clínica:</strong> {facturaImprimir.paciente?.historiaClinica}</div>
+              <div><strong>Forma de pago:</strong> {facturaImprimir.formaPago === "efectivo" ? "Efectivo" : "Transferencia"}</div>
+            </div>
+            <table className="w-full text-sm mb-4">
+              <tbody>
+                <tr style={{ borderBottom: "1px solid #eee" }}>
+                  <td className="py-1.5">Costo base hospital</td>
+                  <td className="py-1.5 text-right">Q{Number(facturaImprimir.costoHospital).toFixed(2)}</td>
+                </tr>
+                <tr style={{ borderBottom: "1px solid #eee" }}>
+                  <td className="py-1.5">Costo de tratamiento intrahospitalario</td>
+                  <td className="py-1.5 text-right">Q{Number(facturaImprimir.costoTratamiento).toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="text-right font-bold text-base">Total: Q{Number(facturaImprimir.total).toFixed(2)}</div>
+          </DocumentoImprimible>
+        )}
+      </Modal>
     </div>
   );
 }

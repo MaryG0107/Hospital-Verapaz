@@ -82,50 +82,89 @@ export async function registrarEntrada(req, res) {
   }
 }
 
-// RF-24/RF-15: salida de medicamentos. "venta directa" genera factura de
-// farmacia propia (RF-20/RF-27); "uso intrahospitalario" se carga al
-// costeo del paciente (RF-15) en vez de facturarse por separado.
+// RF-24/RF-15: salida de un medicamento por uso intrahospitalario (se
+// carga al costeo del paciente, RF-15). Para ventas directas usar
+// POST /farmacia/ventas, que soporta varios medicamentos en una factura.
 export async function registrarSalida(req, res) {
-  const { cantidad, motivo, pacienteId } = req.body;
+  const { cantidad, pacienteId } = req.body;
   const medicamentoId = Number(req.params.id);
   if (!cantidad || cantidad <= 0) return res.status(400).json({ error: "cantidad debe ser mayor a 0" });
+  if (!pacienteId) return res.status(400).json({ error: "pacienteId es requerido para uso intrahospitalario" });
+
+  const medicamento = await prisma.medicamentoInventario.findUnique({ where: { id: medicamentoId } });
+  if (!medicamento) return res.status(404).json({ error: "Medicamento no encontrado" });
+  if (medicamento.stock < cantidad) return res.status(409).json({ error: "Stock insuficiente" });
+
+  const costo = Number(medicamento.precioVenta) * cantidad;
+  const [, , tratamiento] = await prisma.$transaction([
+    prisma.medicamentoInventario.update({ where: { id: medicamentoId }, data: { stock: { decrement: cantidad } } }),
+    prisma.movimientoInventario.create({
+      data: { medicamentoId, tipo: "salida", cantidad, motivo: "uso intrahospitalario" },
+    }),
+    prisma.tratamientoItem.create({
+      data: {
+        pacienteId: Number(pacienteId),
+        descripcion: medicamento.nombre,
+        dosis: `${cantidad} unidad(es)`,
+        costo,
+        origen: "farmacia",
+      },
+    }),
+  ]);
+  res.status(201).json({ ok: true, tratamiento });
+}
+
+// RF-20/RF-24/RF-27: venta directa (carrito con uno o mas medicamentos),
+// opcionalmente a nombre de un paciente para su registro/trazabilidad.
+export async function registrarVenta(req, res) {
+  const { pacienteId, items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "items es requerido (al menos un medicamento)" });
+  }
+  for (const item of items) {
+    if (!item.medicamentoId || !item.cantidad || item.cantidad <= 0) {
+      return res.status(400).json({ error: "Cada item necesita medicamentoId y una cantidad mayor a 0" });
+    }
+  }
 
   try {
-    if (motivo === "uso intrahospitalario") {
-      if (!pacienteId) return res.status(400).json({ error: "pacienteId es requerido para uso intrahospitalario" });
-
-      const medicamento = await prisma.medicamentoInventario.findUnique({ where: { id: medicamentoId } });
-      if (!medicamento) return res.status(404).json({ error: "Medicamento no encontrado" });
-      if (medicamento.stock < cantidad) return res.status(409).json({ error: "Stock insuficiente" });
-
-      const costo = Number(medicamento.precioVenta) * cantidad;
-      const [, , tratamiento] = await prisma.$transaction([
-        prisma.medicamentoInventario.update({ where: { id: medicamentoId }, data: { stock: { decrement: cantidad } } }),
-        prisma.movimientoInventario.create({
-          data: { medicamentoId, tipo: "salida", cantidad, motivo: "uso intrahospitalario" },
-        }),
-        prisma.tratamientoItem.create({
-          data: {
-            pacienteId: Number(pacienteId),
-            descripcion: medicamento.nombre,
-            dosis: `${cantidad} unidad(es)`,
-            costo,
-            origen: "farmacia",
-          },
-        }),
-      ]);
-      return res.status(201).json({ ok: true, tratamiento });
-    }
-
-    // motivo por defecto: "venta directa"
-    const resultado = await registrarVentaFarmacia({
-      medicamentoId,
-      cantidad: Number(cantidad),
+    const factura = await registrarVentaFarmacia({
+      pacienteId: pacienteId ? Number(pacienteId) : null,
+      items: items.map((i) => ({ medicamentoId: Number(i.medicamentoId), cantidad: Number(i.cantidad) })),
       registradoPor: req.user.id,
     });
-    res.status(201).json({ ok: true, ...resultado });
+    res.status(201).json(factura);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     throw err;
   }
+}
+
+export async function listarVentas(req, res) {
+  const { pacienteId } = req.query;
+  const facturas = await prisma.facturaFarmacia.findMany({
+    where: pacienteId ? { pacienteId: Number(pacienteId) } : undefined,
+    orderBy: { creadoEn: "desc" },
+    take: 50,
+    include: {
+      items: { include: { medicamento: { select: { nombre: true } } } },
+      paciente: { select: { nombreCompleto: true, historiaClinica: true } },
+      registrador: { select: { nombre: true } },
+    },
+  });
+  res.json(facturas);
+}
+
+// Para la vista imprimible de la factura
+export async function obtenerVenta(req, res) {
+  const factura = await prisma.facturaFarmacia.findUnique({
+    where: { id: Number(req.params.id) },
+    include: {
+      items: { include: { medicamento: { select: { nombre: true, tipo: true, presentacion: true } } } },
+      paciente: { select: { nombreCompleto: true, historiaClinica: true, dpi: true } },
+      registrador: { select: { nombre: true } },
+    },
+  });
+  if (!factura) return res.status(404).json({ error: "Factura no encontrada" });
+  res.json(factura);
 }
